@@ -10,6 +10,8 @@ Speak your race's language. Your line goes out as Thalassian, Orcish, Dwarvish..
 
 Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali, Gutterspeak, Demonic, Draconic and Titan.
 
+> **Not a cross-faction translator.** EzTongues has nothing to do with the game's own language garbling. When the other faction talks, the server swaps each of their words for a random one from a word list and the original is gone, so no addon can read it back. EzTongues lines are ordinary chat between players of the **same faction** who both run the addon; the other faction sees the server's gibberish on top of ours, with no translation. EzTongues borrows Blizzard's word lists so its languages look right, which means a short garbled line from the other faction can now and then look like an EzTongues line and get a nonsense "translation". Ignore it.
+
 ## Commands
 
 | Command | Does |
