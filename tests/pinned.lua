@@ -1,0 +1,88 @@
+-- Pinned encodings: lines like these are already out there, so they must decode forever.
+-- tests/smoke.lua fails if any of them changes. Add new ones, never edit these.
+return {
+    samples = {
+        "Well met, friend. Have you seen Thrall?",
+        "I can't believe it's not butter!",
+        "VICTORY OR DEATH",
+        "Meet me at the inn at 10, ok? Bring {skull} and %t.",
+        "Hello Jaina, the sun guides us.",
+    },
+    thalassian = {
+        "Sinu a'manore, eahanu. Shar uro fano Lae'Lsheett?",
+        "Dor faal anran'sa an'ro ene lae'puullah!",
+        "DOADONA ONI BANAR",
+        "Tere uri ino nei idor ino 10, afal? Faldu {skull} tal %t.",
+        "Fal're Lae'Jeeone, anu belore dela'na.",
+    },
+    darnassian = {
+        "Fa'sa thodu, etdona. Alro ohal as'sa Nae'Nhriitt?",
+        "Aseo ona'ni olahhal faris as'ne nae'poonnar!",
+        "ERISHAN ETLO ALASA",
+        "Et'ar ia'na ohao ual is'man ohao 10, do'rae? Thonu {skull} ilni %t.",
+        "Ula'ni Nae'Jiieli, ual etla nae'wooedas ba'na.",
+    },
+    dwarvish = {
+        "Azgun moduta, syddor. Hine ahz godga Gral'Rgnumm?",
+        "Gor godsag gurenon anduta hor gral'yerran!",
+        "MITGOGA LOCH HOGAZ",
+        "Ho'var rone thon mok rodan thon 10, dagane? Azvar {skull} gar %t.",
+        "Syddji Gral'Juiku, mok movas gral'ceibadd haga.",
+    },
+    gnomish = {
+        "Assi botge, modani. Rema eme bunan Gex'Tnzabb?",
+        "Ata nocma helnane gogim ema gex'wuttiz!",
+        "REZOTEN AME STUTA",
+        "Agizr regi agi mor naghi agi 10, eling? Go'ran {skull} zah %t.",
+        "Buras Gex'Vaoka, mor dumgi gex'huogip amat.",
+    },
+    orcish = {
+        "Throm-ka, kanoka. Re'ka kek re'va Grak'Kztomm?",
+        "Kil unaz logossh zava mog grak'yekkat!",
+        "LOK'TAR OGAR",
+        "Moku za'za oma ogg zaha oma 10, dalaa? Raz'za {skull} gul %t.",
+        "Razma Grak'Voigo, ogg ma'za grak'ceihar uka.",
+    },
+    taurahe = {
+        "Pa'lo achi, hawaha. Shte zhi lale Kah'Nktorr?",
+        "Awa lo'he ahharah tohe kee kah'yunnat!",
+        "KICKELO UHE UHAHE",
+        "La'ke ic'ta oki rah ni'he oki 10, ya'ni? Abawa {skull} aki %t.",
+        "Kas'ku Kah'Joiho, an'she kah'cuiwam uhu.",
+    },
+    zandali = {
+        "Ac'do didim, orbeah. T'ief deh di'ri Gaz'Jnkoott?",
+        "Wi ipong orso'mek nyari fus gaz'geejjak!",
+        "WIPOPEK MEK UP'PEK",
+        "Iohi du'da ika sca ri'hi ika 10, diota? Oon'ta {skull} weh %t.",
+        "Chaka Gaz'Boouzo, sca fi'da gaz'ceeudam ita.",
+    },
+    gutterspeak = {
+        "Vane vande, norung. Noth nud bahas Gra'Vtsodd?",
+        "Wos velde aldbade goide odi gra'yuvves!",
+        "LANLODE ADE LITKA",
+        "Metdi udos udi gol meldi udi 10, daeka? Eneme {skull} bor %t.",
+        "Rewos Gra'Joino, gol ealde gra'cuiler hadi.",
+    },
+    demonic = {
+        "Azre buhad, nalada. Amir lek somos Xar'Zthomm?",
+        "Zar kidor mishure zenre kar xar'yuzzah!",
+        "FAKULTE ODA ASKAN",
+        "Arlar veda ote laz zelad ote 10, bekas? Azhul {skull} maz %t.",
+        "Ahare Xar'Voeko, laz sote xar'cuegar veje.",
+    },
+    draconic = {
+        "Kanor nazdas, rehula. Benka mokal annas Rhy'Rzkehh?",
+        "Kamos gorani metihun razire ahuka rhy'yurrakk!",
+        "MORIOSH RALAR ZEHAD",
+        "Ziras ardaz veman ohad mohad veman 10, mereda? Ranor {skull} roje %t.",
+        "Mishul Rhy'Veile, ohad tikun rhy'cuitan tihar.",
+    },
+    titan = {
+        "Aladaz retnor, thorni. Amola ohuka asahad Iku'Nldukk?",
+        "Ovote anakan danadas ennale mozar iku'yinnod!",
+        "MORAROS ATIDA GORALA",
+        "Ahular gonaka otida rozar enmada otida 10, sotini? Tickan {skull} kikal %t.",
+        "Kihela Iku'Jueru, rozar tobosh iku'wiemot omare.",
+    },
+}

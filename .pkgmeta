@@ -1,0 +1,13 @@
+package-as: EzTongues
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - README.md
+  - .luacheckrc
+  - media
+  - tools
+  - tests
+  - .githooks

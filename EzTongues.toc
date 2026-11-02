@@ -1,0 +1,15 @@
+## Interface: 16001, 11509
+## Title: EzTongues
+## Notes: Speak Thalassian, Orcish, Dwarvish and more: those who know the language read what you said.
+## Author: Marc
+## Version: @project-version@
+## IconTexture: Interface\Icons\INV_Misc_Book_09
+## SavedVariables: EzTonguesDB
+## SavedVariablesPerCharacter: EzTonguesCharDB
+
+Data.lua
+Dictionary.lua
+Cipher.lua
+Codec.lua
+Settings.lua
+Core.lua

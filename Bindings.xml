@@ -1,0 +1,3 @@
+<Bindings>
+	<Binding name="EZTONGUES_BOX" runOnUp="true" category="EzTongues">EzTongues_ToggleBox(keystate)</Binding>
+</Bindings>
