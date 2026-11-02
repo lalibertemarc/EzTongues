@@ -26,7 +26,7 @@ read_globals = {
     "C_ChatInfo", "issecretvalue",
     -- Global APIs
     "GetBuildInfo", "UnitRace", "UnitClass", "UnitFactionGroup", "UnitName", "UnitExists", "UnitIsPlayer",
-    "SendChatMessage", "InCombatLockdown",
+    "SendChatMessage", "InCombatLockdown", "IsInGroup", "IsInRaid", "IsInGuild", "GetNumGroupMembers", "ChatTypeInfo",
     -- Lua helpers WoW adds
     "tContains",
 }

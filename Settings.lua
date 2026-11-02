@@ -37,7 +37,7 @@ function ns.BuildSettings(start)
     Button("Sample line", "Preview", function() ns.Test(ns.SAMPLE) end,
         "Prints a sample line in your default language, and its translation, to your chat. Only you see it.")
     Button("Tongue box", "Open", function() ns.OpenBox() end,
-        "A small edit box of its own: Enter says the line, a leading /y, /p, /w name... picks the channel, the button picks the language, Escape closes it. Drag it to move it.")
+        "A small edit box of its own: Enter says the line, a leading /y, /p, /w name... picks the channel, the dropdown picks the language, Escape closes it. Drag it to move it.")
     Button("Box position", "Reset", function() ns.ResetBox() end, "Puts the box back above your action bars.")
     -- No inline binding rows or search tags: they taint the options search in Forever.
     Button("Key binding", "Key Bindings",

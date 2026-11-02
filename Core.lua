@@ -11,10 +11,12 @@ local MAX = 255  -- chat message limit, in bytes
 local function Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cffb48ee0EzTongues|r: " .. msg)
 end
+ns.Print = Print
 
 local function Trim(s)
     return (s or ""):match("^%s*(.-)%s*$")
 end
+ns.Trim = Trim
 
 local function issecret(v)
     return issecretvalue and issecretvalue(v)
@@ -36,15 +38,18 @@ end
 local function Label(key)
     return byKey[key] and byKey[key].label or key
 end
+ns.Label = Label
 
 local function Knows(key)
     return EzTonguesCharDB and EzTonguesCharDB.known[key] == true
 end
+ns.Knows = Knows
 
 local function Default()
     local key = EzTonguesCharDB and EzTonguesCharDB.default
     return byKey[key] and key or ns.TONGUES[1].key
 end
+ns.Default = Default
 
 -- What a new character knows: race, faction (Horde: Orcish) and class (warlocks: Demonic).
 local function StartingTongues()
@@ -82,33 +87,93 @@ local function ChatLocked()
     return C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()
 end
 
--- A whisper's name and the text after it. Forever names have surnames and whispers need "First Surname": when
--- the name is your target's first name, the full name comes from the target (and a typed surname is skipped).
--- "First Surname" in quotes works too, and so does %t for your target.
-local function TargetFullName()
-    if not (UnitExists("target") and UnitIsPlayer("target")) then return end
-    local first, surname = UnitName("target")
+-- Whispers. Forever names have surnames and whispers need "First Surname", so a typed first name is looked up
+-- among the people you'd likely whisper: your target, those you whispered with lately (EzTonguesCharDB.whispers,
+-- newest first) and your group.
+local function UnitFullName(unit)
+    local exists, isPlayer = UnitExists(unit), UnitIsPlayer(unit)
+    if issecret(exists) or issecret(isPlayer) or not (exists and isPlayer) then return end
+    local first, surname = UnitName(unit)
     if not first or issecret(first) then return end
     if surname and not issecret(surname) and surname ~= "" then
-        return first .. (ns.ERA and "-" or " ") .. surname, first, surname
+        return first .. (ns.ERA and "-" or " ") .. surname
     end
-    return first, first
+    return first
 end
 
+local function NameKey(name)
+    return (name:match("^[^%s%-]+") or name):lower()
+end
+
+local function GroupUnits()
+    local units, n = {}, GetNumGroupMembers() or 0
+    if IsInRaid() then
+        for i = 1, n do units[#units + 1] = "raid" .. i end
+    else
+        for i = 1, n - 1 do units[#units + 1] = "party" .. i end
+    end
+    return units
+end
+
+-- { { name, why }, ... }: each person once, never you.
+local function WhisperNames()
+    local list, seen = {}, {}
+    local me = UnitName("player")
+    if me and not issecret(me) then seen[NameKey(me)] = true end
+    local function add(name, why)
+        if name and not seen[NameKey(name)] then
+            seen[NameKey(name)] = true
+            list[#list + 1] = { name = name, why = why }
+        end
+    end
+    add(UnitFullName("target"), "target")
+    for _, name in ipairs(EzTonguesCharDB and EzTonguesCharDB.whispers or {}) do add(name, "whispered") end
+    for _, unit in ipairs(GroupUnits()) do add(UnitFullName(unit), "group") end
+    return list
+end
+ns.WhisperNames = WhisperNames
+
+-- The name to whisper for one typed: %t is your target, a lone first name someone above has gets their surname,
+-- anything else goes out as typed. nil: nobody (%t without a target).
+local function ResolveName(name)
+    name = Trim(name)
+    if name == "%t" then return UnitFullName("target") end
+    if name == "" then return end
+    if name:find("%s") then return name end
+    for _, p in ipairs(WhisperNames()) do
+        if NameKey(p.name) == NameKey(name) then return p.name end
+    end
+    return name
+end
+ns.ResolveName = ResolveName
+
+-- A whisper's author as the game gives it: "First-Surname" in Forever, made "First Surname" (what whispers take);
+-- "Name-Realm" in Era, kept (it whispers fine).
+local function Remember(author)
+    if not EzTonguesCharDB or type(author) ~= "string" or issecret(author) or author == "" then return end
+    local name = ns.ERA and author or author:gsub("%-", " ")
+    local list = EzTonguesCharDB.whispers
+    for i = #list, 1, -1 do
+        if NameKey(list[i]) == NameKey(name) then table.remove(list, i) end
+    end
+    table.insert(list, 1, name)
+    for i = #list, ns.RECENT_MAX + 1, -1 do list[i] = nil end
+end
+
+-- A whisper's name and the text after it: "First Surname" in quotes, or a name as ResolveName takes it (a surname
+-- typed after a first name it filled in is skipped).
 local function WhisperTarget(rest)
     local quoted, text = rest:match('^"([^"]+)"%s+(.+)$')
     if quoted then return quoted, text end
     local name
     name, text = rest:match("^(%S+)%s+(.+)$")
     if not name then return end
-    local full, first, surname = TargetFullName()
-    if name == "%t" then return full, text end
-    if full and first:lower() == name:lower() then
-        local typed, after = text:match("^(%S+)%s+(.+)$")
-        if surname and typed and typed:lower() == surname:lower() then text = after end
-        return full, text
-    end
-    return name, text
+    local full = ResolveName(name)
+    if not full then return end
+    local surname = full ~= name and full:match("^[^%s%-]+[%s%-](.+)$")
+    local typed, after = text:match("^(%S+)%s+(.+)$")
+    if surname and typed and typed:lower() == surname:lower() then text = after end
+    return full, text
 end
 
 -- %t in the line itself: the game would put your target's name in plain (and the line would stop decoding), so
@@ -140,6 +205,7 @@ local function Say(key, text, chatType, target)
         Send(msg, chatType, target)
     end
 end
+ns.Say = Say
 
 -- rest of a /tongue <lang> <letter> line
 local function SayTo(key, chatType, rest)
@@ -150,6 +216,7 @@ local function SayTo(key, chatType, rest)
     end
     Say(key, rest, chatType)
 end
+ns.SayTo = SayTo
 
 -- "y Hello" -> yell; anything else is said.
 local function Speak(key, rest)
@@ -291,165 +358,6 @@ end
 ns.SetDefault = SetDefault
 
 ---------------------------------------------------------------------------
--- The box: an edit box of its own, as in EzAccent. Enter says the line in the box's language (in /say, or the
--- channel of a leading /y, /p, /w name ...), Escape closes it, Up/Down go through this session's lines, the button
--- on the left picks the language (it's also your default). A click outside lets go of the keyboard and leaves it open.
----------------------------------------------------------------------------
-local box, edit, langButton
-local history, historyAt = {}, 0
-
-local function PlaceBox(f)
-    local p = EzTonguesDB.box
-    f:ClearAllPoints()
-    if p then
-        f:SetPoint(p[1], UIParent, p[2], p[3], p[4])
-    else
-        f:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 300)
-    end
-end
-
-local function SaveBoxPoint(f)
-    local point, _, relPoint, x, y = f:GetPoint()
-    EzTonguesDB.box = { point, relPoint, x, y }
-end
-
-local function BoxLine(text)
-    text = Trim(text)
-    local key = Default()
-    local cmd, rest = text:match("^/(%S+)%s*(.*)$")
-    local chatType = cmd and ns.BOX_CHANNELS[cmd:lower()]
-    if chatType then return SayTo(key, chatType, rest) end
-    Say(key, text, "SAY")
-end
-
-local function ShowLanguage()
-    if not box then return end
-    langButton:SetText(Label(Default()))
-    box.title:SetText("EzTongues" .. (Knows(Default()) and "" or "  |cffff6060(you don't know it)|r"))
-end
-
-local function CycleLanguage(step)
-    local at = 1
-    for i, t in ipairs(ns.TONGUES) do
-        if t.key == Default() then at = i end
-    end
-    EzTonguesCharDB.default = ns.TONGUES[(at - 1 + step) % #ns.TONGUES + 1].key
-    ShowLanguage()
-end
-
-local function MakeBox()
-    local f = CreateFrame("Frame", "EzTonguesBox", UIParent, "BackdropTemplate")
-    f:SetSize(500, 56)
-    PlaceBox(f)
-    f:SetFrameStrata("DIALOG")
-    f:SetBackdrop({
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 14,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0, 0, 0, 0.85)
-    f:SetClampedToScreen(true)
-    f:SetMovable(true)
-    f:EnableMouse(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        SaveBoxPoint(self)
-    end)
-    f:Hide()
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    f.title:SetPoint("TOPLEFT", 10, -8)
-    local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("TOPRIGHT", -24, -8)
-
-    -- Own OnClick: the template's HideUIPanel is blocked in combat.
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    close:SetSize(22, 22)
-    close:SetPoint("TOPRIGHT", 1, 1)
-    close:SetScript("OnClick", function() f:Hide() end)
-
-    -- The language: left-click for the next one, right-click for the one before.
-    local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    langButton = b
-    b:SetSize(96, 22)
-    b:SetPoint("BOTTOMLEFT", 8, 6)
-    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    b:SetScript("OnClick", function(_, button) CycleLanguage(button == "RightButton" and -1 or 1) end)
-
-    local e = CreateFrame("EditBox", nil, f)
-    edit = e
-    e:SetFontObject(ChatFontNormal)
-    e:SetPoint("TOPLEFT", b, "TOPRIGHT", 8, 0)
-    e:SetPoint("BOTTOMRIGHT", -10, 6)
-    e:SetAutoFocus(false)
-    e:SetMaxLetters(MAX)
-    e:SetScript("OnEnterPressed", function(self)
-        local text = self:GetText()
-        self:SetText("")
-        f:Hide()
-        if Trim(text) ~= "" then
-            if history[#history] ~= text then history[#history + 1] = text end
-            if #history > 20 then table.remove(history, 1) end
-            BoxLine(text)
-        end
-    end)
-    e:SetScript("OnEscapePressed", function() f:Hide() end)
-    e:SetScript("OnArrowPressed", function(self, key)
-        if #history == 0 or (key ~= "UP" and key ~= "DOWN") then return end
-        historyAt = math.max(1, math.min(#history + 1, historyAt + (key == "UP" and -1 or 1)))
-        self:SetText(history[historyAt] or "")
-        self:SetCursorPosition(#self:GetText())
-    end)
-    e:SetScript("OnEditFocusGained", function()
-        hint:SetText("Enter: say  /y /p /g /r /e /w name  Esc: close")
-    end)
-    e:SetScript("OnEditFocusLost", function()
-        hint:SetText("Click here to type")
-    end)
-    f:SetScript("OnMouseDown", function() e:SetFocus() end)
-
-    f:SetScript("OnShow", function()
-        ShowLanguage()
-        historyAt = #history + 1
-        e:SetFocus()
-    end)
-    f:SetScript("OnHide", function() e:ClearFocus() end)
-
-    -- Any click outside the box (the world, another window) gives the keyboard back to the game.
-    f:RegisterEvent("GLOBAL_MOUSE_DOWN")
-    f:SetScript("OnEvent", function(self)
-        if self:IsShown() and e:HasFocus() and not self:IsMouseOver() then e:ClearFocus() end
-    end)
-    return f
-end
-
-local function OpenBox()
-    box = box or MakeBox()
-    box:Show()
-end
-ns.OpenBox = OpenBox
-
-function ns.ResetBox()
-    EzTonguesDB.box = nil
-    if box then PlaceBox(box) end
-    Print("Box moved back to its first spot.")
-end
-
--- Bindings.xml (runOnUp): opens on key release, so the key's own letter never lands in the box. While the box is
--- open but let go of, the key takes the keyboard back instead of closing it.
-function EzTongues_ToggleBox(keystate)
-    if keystate ~= "up" then return end
-    if box and box:IsShown() then
-        if edit:HasFocus() then box:Hide() else edit:SetFocus() end
-    else
-        OpenBox()
-    end
-end
-
----------------------------------------------------------------------------
 -- Slash command
 ---------------------------------------------------------------------------
 local function OpenSettings()
@@ -460,12 +368,12 @@ end
 local HELP = {
     "/tongue <lang> <text> - say <text> in a language (/lang works too)",
     "/tongue <lang> y|p|g|o|r|e <text> - yell, party, guild, officer, raid or emote it (emotes: only the \"quotes\")",
-    "/tongue <lang> w <name> <text> - whisper it (your target's first name, \"First Surname\", or %t)",
+    "/tongue <lang> w <name> <text> - whisper it (\"First Surname\", %t, or the first name of your target, someone you whispered with or in your group)",
     "/tongue <text> - your default language; /tongue default <lang> sets it",
     "/tongue test [lang] <text> - show it in the language and back, sends nothing",
     "/tongue list - every language, and which you know",
     "/tongue learn|forget <lang|all> - honor system: learn what your character speaks",
-    "/tongue box - the edit box (also a key binding: Options > Keybindings > EzTongues)",
+    "/tongue box - the edit box: language and channel on its left, or start a line with /y, /p, /w name... (also a key binding: Options > Keybindings > EzTongues)",
     "/tongue config - the options page (Options > AddOns > EzTongues)",
 }
 
@@ -482,7 +390,7 @@ local COMMANDS = {
     forget = function(arg) SetKnown(arg, false) end,
     default = SetDefault,
     test = Test,
-    box = OpenBox,
+    box = function() ns.OpenBox() end,
     config = OpenSettings,
 }
 
@@ -504,7 +412,10 @@ end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
-ev:SetScript("OnEvent", function()
+ev:RegisterEvent("CHAT_MSG_WHISPER")
+ev:RegisterEvent("CHAT_MSG_WHISPER_INFORM")
+ev:SetScript("OnEvent", function(_, event, ...)
+    if event ~= "PLAYER_LOGIN" then return Remember((select(2, ...))) end  -- text, author
     EzTonguesDB = EzTonguesDB or {}
     for k, v in pairs(ns.DEFAULTS) do
         if EzTonguesDB[k] == nil then EzTonguesDB[k] = v end
@@ -515,6 +426,7 @@ ev:SetScript("OnEvent", function()
         EzTonguesCharDB.known = {}
         for _, key in ipairs(start) do EzTonguesCharDB.known[key] = true end
     end
+    if type(EzTonguesCharDB.whispers) ~= "table" then EzTonguesCharDB.whispers = {} end
     if not byKey[EzTonguesCharDB.default] then EzTonguesCharDB.default = start[1] or ns.TONGUES[1].key end
     ns.BuildSettings(start)
 end)

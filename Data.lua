@@ -187,6 +187,22 @@ ns.BOX_CHANNELS = {
     emote = "EMOTE", w = "WHISPER", whisper = "WHISPER", t = "WHISPER", tell = "WHISPER",
 }
 
+-- The box's channel list (a click on the channel), in order, with the command that picks it from a line.
+-- need: greyed unless you're in a group, a raid or a guild.
+ns.BOX_MENU = {
+    { chatType = "SAY", label = "Say", cmd = "/s" },
+    { chatType = "YELL", label = "Yell", cmd = "/y" },
+    { chatType = "EMOTE", label = "Emote", cmd = "/e" },
+    { chatType = "PARTY", label = "Party", cmd = "/p", need = "group" },
+    { chatType = "RAID", label = "Raid", cmd = "/r", need = "raid" },
+    { chatType = "GUILD", label = "Guild", cmd = "/g", need = "guild" },
+    { chatType = "OFFICER", label = "Officer", cmd = "/o", need = "guild" },
+    { chatType = "WHISPER", label = "Whisper", cmd = "/w name" },
+}
+
+-- How many people you whispered with (either way) are kept for the box's names, per character.
+ns.RECENT_MAX = 10
+
 -- Chat a tongue can be heard in. The translation is added to the line in each chat frame.
 ns.CHAT_EVENTS = {
     "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_EMOTE",

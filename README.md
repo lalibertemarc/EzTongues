@@ -18,7 +18,7 @@ Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali,
 |---|---|
 | `/tongue <lang> <text>` | Say it in that language (`/lang` and `/eztongues` work too). `lang` is a name or a short one: `tha`, `darn`, `dwarf`, `gnome`, `orc`, `tauren`, `troll`, `forsaken`, `demon`, `dragon`, `titan` |
 | `/tongue <lang> y\|p\|g\|o\|r\|e <text>` | Yell, party, guild, officer, raid or emote it (in an emote with "quoted speech", only the quotes are in the language); `/tongue <lang> s <text>` says a line starting with one of those letters |
-| `/tongue <lang> w <name> <text>` | Whisper it: your target's first name (their surname is filled in), `"First Surname"`, or `%t` |
+| `/tongue <lang> w <name> <text>` | Whisper it: `"First Surname"`, `%t`, or just the first name of your target, someone you whispered with lately or someone in your group (their surname is filled in) |
 | `/tongue <text>` | Your default language; `/tongue default <lang>` sets it |
 | `/tongue test [lang] <text>` | Print it in the language and back, send nothing |
 | `/tongue list` | Every language, and which you know |
@@ -26,7 +26,7 @@ Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali,
 | `/tongue box` | The edit box |
 | `/tongue config` | The options page (Options > AddOns > EzTongues) |
 
-**The box.** Bind a key under Options > Keybindings > EzTongues (or `/tongue box`). Type, press Enter to say it; start with `/y`, `/p`, `/g`, `/r`, `/e` or `/w name` for another channel; the button on the left picks the language (left-click next, right-click back); Up/Down bring back earlier lines; Escape closes. Click anywhere else and it lets go of the keyboard so you can walk, but stays open.
+**The box.** Bind a key under Options > Keybindings > EzTongues (or `/tongue box`). Type, press Enter to say it. The dropdown on the left picks the language (ones you don't know are greyed). The channel shows at the start of the line, as in chat (`Say:`, `Tell Jaina Proudmoore:`), and the box stays on it. To switch, start a line the way chat does: `/y`, `/p`, `/g`, `/o`, `/r`, `/e` or `/w name` and a space. `/w jaina ` fills in the surname of someone the box knows: your target, the people you whispered with (either way, the last 10 per character) and your group. A first name it doesn't know waits for its surname (`/w Bob Smith `), since Forever whispers need both; `/w "First Surname" ` works too. Tab whispers the next of those people, and clicking the channel lists every channel and person. Up/Down bring back earlier lines with their channel; Escape closes. Click anywhere else and it lets go of the keyboard so you can walk, but stays open.
 
 **Knowing a language is the honor system.** A new character knows its race's language (Forsaken: Gutterspeak), Orcish if it's Horde and Demonic if it's a warlock. Alliance common is just Common, what you type. Learn or forget the rest on the options page or with `/tongue learn`. Anyone with EzTongues *could* read every language; what your character understands is up to you. Your own lines always show their translation.
 

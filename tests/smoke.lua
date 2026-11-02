@@ -17,6 +17,7 @@ end
 local printed, sent, filters, frames = {}, {}, {}, {}
 local player = { name = "Grukk", surname = "Stonefist", race = "Orc", class = "WARRIOR", faction = "Horde" }
 local target
+local group = {}  -- party1, party2 ...: { name, surname }
 
 local function Stub(name)
     local f = { scripts = {}, name = name, shown = false, text = "" }
@@ -28,7 +29,9 @@ local function Stub(name)
         if k == "IsShown" then return function(self) return self.shown end end
         if k == "SetText" then return function(self, t) self.text = t end end
         if k == "GetText" then return function(self) return self.text end end
-        if k == "CreateFontString" then return function() return Stub("font") end end
+        if k == "CreateFontString" or k == "GetFontString" or k == "CreateTexture" then
+            return function() return Stub("region") end
+        end
         if k == "HasFocus" then return function(self) return self.focus end end
         if k == "SetFocus" then return function(self) self.focus = true end end
         if k == "ClearFocus" then return function(self) self.focus = false end end
@@ -52,14 +55,24 @@ C_ChatInfo = {
     InChatMessagingLockdown = function() return false end,
 }
 function issecretvalue() return false end
+local function UnitOf(unit)
+    if unit == "player" then return player end
+    if unit == "target" then return target end
+    local i = unit:match("^party(%d)$")
+    return i and group[tonumber(i)]
+end
 function UnitName(unit)
-    if unit == "player" then return player.name, player.surname end
-    if unit == "target" and target then return target.name, target.surname end
+    local u = UnitOf(unit)
+    if u then return u.name, u.surname end
 end
 function UnitRace() return player.race, player.race end
 function UnitClass() return player.class, player.class end
 function UnitFactionGroup() return player.faction end
-function UnitExists(unit) return unit == "target" and target ~= nil end
+function UnitExists(unit) return UnitOf(unit) ~= nil end
+function GetNumGroupMembers() return #group > 0 and #group + 1 or 0 end
+function IsInGroup() return #group > 0 end
+function IsInRaid() return false end
+function IsInGuild() return false end
 function UnitIsPlayer() return true end
 function InCombatLockdown() return false end
 function tContains(t, v)
@@ -257,8 +270,12 @@ local kb = collectgarbage("count") - before
 ---------------------------------------------------------------------------
 -- Core: login, slash command, chat filter
 ---------------------------------------------------------------------------
+local coreEvents
 for _, f in ipairs(frames) do
-    if f.scripts.OnEvent then f.scripts.OnEvent(f, "PLAYER_LOGIN") end
+    if f.scripts.OnEvent then
+        coreEvents = coreEvents or f
+        f.scripts.OnEvent(f, "PLAYER_LOGIN")
+    end
 end
 check(EzTonguesCharDB.known.orcish == true, "orc knows Orcish")
 check(EzTonguesCharDB.known.thalassian == false, "orc doesn't know Thalassian")
@@ -324,17 +341,138 @@ local link = ns.Encode("orcish", "Take |cffa335ee|Hitem:1|h[Sword]|h|r now")
 local _, linked = filter(nil, "CHAT_MSG_SAY", link, "Grukk")
 check(linked and linked:find("|r|cffe6c35c now)|r", 1, true) ~= nil, "color picked up again after a link: " .. tostring(linked))
 
+-- Whispers remembered, either way: a first name gets their surname.
+slash("learn orcish")
+coreEvents.scripts.OnEvent(coreEvents, "CHAT_MSG_WHISPER", "hi", "Bob-Smith")
+check(EzTonguesCharDB.whispers[1] == "Bob Smith", "whisper author remembered as First Surname")
+sent = {}
+slash("orc w bob Smith Hello")
+check(sent[1] and sent[1].to == "Bob Smith" and ns.Decode("orcish", sent[1].msg) == "Hello", "whisper to a remembered name")
+group = { { name = "Thrall", surname = "Hellscream" } }
+sent = {}
+slash("orc w thrall For the Horde")
+check(sent[1] and sent[1].to == "Thrall Hellscream", "whisper to a group member's full name")
+group = {}
+
 -- The box: keybind opens it, Enter says the line in its language.
 EzTongues_ToggleBox("down")
 EzTongues_ToggleBox("up")
-local editBox
-for _, f in ipairs(frames) do if f.scripts.OnEnterPressed then editBox = f end end
-check(editBox ~= nil, "box made")
-slash("learn orcish")
-sent = {}
+local editBox, header
+for _, f in ipairs(frames) do
+    if f.name == "EzTonguesBoxEdit" then editBox = f elseif f.name == "EzTonguesBoxHeader" then header = f end
+end
+check(editBox ~= nil and header ~= nil, "box made")
+local function Open()
+    EzTongues_ToggleBox("up")
+end
+local function Type(text)
+    editBox.text = text
+    editBox.scripts.OnTextChanged(editBox, true)
+end
+local function Enter()
+    sent = {}
+    editBox.scripts.OnEnterPressed(editBox)
+    return sent[1] or {}
+end
+local function Channel() return header.label.text end
+check(Channel() == "Say:", "box starts on Say")
 editBox.text = "/p Well met"
-editBox.scripts.OnEnterPressed(editBox)
-check(sent[1] and sent[1].chatType == "PARTY" and ns.Decode("orcish", sent[1].msg) == "Well met", "box sends to party")
+local m = Enter()
+check(m.chatType == "PARTY" and ns.Decode("orcish", m.msg) == "Well met", "box sends a /p line to party")
+
+-- A channel command and a space switch the box, and it stays there.
+Open()
+Type("/p ")
+check(editBox.text == "" and Channel() == "Party:", "/p and a space switch to party: " .. Channel())
+Type("Well met")
+check(Enter().chatType == "PARTY", "box sends to party")
+Open()
+Type("Again")
+check(Enter().chatType == "PARTY", "box stays on party")
+
+-- Whisper: "/w jaina " fills in the target's surname, and skips it when typed anyway.
+Open()
+Type("/w jaina ")
+check(Channel() == "Tell Jaina Proudmoore:" and editBox.text == "", "/w first name -> full name: " .. Channel())
+Type("Proudmoore ")
+check(editBox.text == "", "typed surname skipped: " .. editBox.text)
+Type("I see you")
+m = Enter()
+check(m.chatType == "WHISPER" and m.to == "Jaina Proudmoore" and ns.Decode("orcish", m.msg) == "I see you",
+    "box whispers the target")
+Open()
+Type("/w jaina Proudmoore right away")
+check(Channel() == "Tell Jaina Proudmoore:" and editBox.text == "right away", "pasted whisper line: " .. editBox.text)
+-- Forever needs the surname: a first name the box doesn't know waits for one.
+Type("/w varian ")
+check(editBox.text == "/w varian ", "unknown first name waits for its surname")
+Type("/w varian Wrynn ")
+check(Channel() == "Tell varian Wrynn:" and editBox.text == "", "unknown name with surname: " .. Channel())
+Type("/w \"Anduin Wrynn\" ")
+check(Channel() == "Tell Anduin Wrynn:", "quoted name")
+
+-- Tab: whispers the next person the box knows, wrapping around.
+editBox.scripts.OnTabPressed(editBox)
+check(Channel() == "Tell Jaina Proudmoore:", "Tab: target first: " .. Channel())
+editBox.scripts.OnTabPressed(editBox)
+check(Channel() == "Tell Bob Smith:", "Tab: then a remembered name: " .. Channel())
+editBox.scripts.OnTabPressed(editBox)
+check(Channel() == "Tell Jaina Proudmoore:", "Tab wraps around: " .. Channel())
+Type("/s ")
+editBox.scripts.OnTabPressed(editBox)
+check(Channel() == "Tell Jaina Proudmoore:", "Tab from Say whispers the first name")
+Type("Hello?")
+check(Enter().to == "Jaina Proudmoore", "whisper sent after Tab")
+
+-- Up brings back a line with its channel.
+Open()
+Type("/s ")
+editBox.scripts.OnArrowPressed(editBox, "UP")
+check(editBox.text == "Hello?" and Channel() == "Tell Jaina Proudmoore:", "history line back with its channel")
+check(Enter().chatType == "WHISPER", "history line keeps its channel")
+
+-- The dropdowns: language, then the channel list (a click on the channel).
+local buttons = {}  -- the box's close button, then the language button
+for _, f in ipairs(frames) do
+    if f.scripts.OnClick and not rawget(f, "name") then buttons[#buttons + 1] = f end
+end
+Open()
+buttons[2].scripts.OnClick(buttons[2])
+local list
+for _, f in ipairs(frames) do if f.name == "EzTonguesBoxList" then list = f end end
+check(list and list.shown and #list.rows == #ns.TONGUES, "dropdown lists every tongue")
+list.rows[1].scripts.OnClick(list.rows[1])
+check(EzTonguesCharDB.default == ns.TONGUES[1].key and not list.shown, "dropdown row sets the default and closes")
+EzTonguesCharDB.default = "orcish"
+header.scripts.OnClick(header)
+-- 7 channels, Jaina (target), Bob (whispered), "Whisper..."
+local rows = 0
+for _, r in ipairs(list.rows) do if r.shown then rows = rows + 1 end end
+check(list.shown and rows == #ns.BOX_MENU + 2, "channel list: channels, names, Whisper...: " .. rows)
+list.rows[2].scripts.OnClick(list.rows[2])
+check(Channel() == "Yell:", "channel list picks yell")
+Type("Hear me")
+check(Enter().chatType == "YELL", "box yells")
+-- "Whisper..." starts the line with /w and gives the line back once the name is in.
+Open()
+Type("hold this")
+header.scripts.OnClick(header)
+list.rows[rows].scripts.OnClick(list.rows[rows])
+check(editBox.text == "/w ", "Whisper... starts /w")
+Type("/w bob ")
+check(Channel() == "Tell Bob Smith:" and editBox.text == "hold this", "line back after the name: " .. editBox.text)
+-- Picking another channel instead drops the unused /w and gives the line back too.
+Type("/s ")
+Type("hold that")
+header.scripts.OnClick(header)
+list.rows[rows].scripts.OnClick(list.rows[rows])
+Type("/w bo")
+header.scripts.OnClick(header)
+list.rows[1].scripts.OnClick(list.rows[1])
+check(Channel() == "Say:" and editBox.text == "hold that", "unused /w dropped on Say: " .. editBox.text)
+Type("/w ")
+editBox.scripts.OnTabPressed(editBox)
+check(Channel() == "Tell Jaina Proudmoore:" and editBox.text == "", "unused /w dropped on Tab: " .. editBox.text)
 
 printed = {}
 slash("test darnassian Elune be with you, Tyrande.")
