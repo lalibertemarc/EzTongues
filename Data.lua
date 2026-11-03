@@ -219,7 +219,7 @@ ns.COLORS = {
     { key = "green", label = "Pale green", hex = "9cd69c" },
 }
 
-ns.DEFAULTS = { showName = true, color = "grey" }
+ns.DEFAULTS = { tag = true, showName = true, color = "grey" }
 
 -- The options page's Preview button says this in your default language (to your chat only).
 ns.SAMPLE = "Well met, friend. Have you seen Thrall? I need to speak with him tonight."

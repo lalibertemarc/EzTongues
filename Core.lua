@@ -194,15 +194,18 @@ local function Say(key, text, chatType, target)
     if chatType == "WHISPER" and not target then return Print("Whisper whom? /tongue <lang> w <name> <text>") end
     if ChatLocked() then return Print("The game blocks addon chat right now.") end
     text = ExpandTarget(text)
-    local said
+    -- "[Orcish] " first, as NPCs' lines in a language: everyone sees what's spoken, and it's on every piece.
+    local tag = EzTonguesDB.tag and ns.Tag(key) or ""
+    local said, prefix
     if chatType == "EMOTE" and text:find('"[^"]+"') then
-        -- /e smiles. "Well met!": only the quoted speech is in the tongue.
-        said = text:gsub('"([^"]+)"', function(q) return '"' .. ns.Encode(key, q, true) .. '"' end)
+        -- /e smiles. [Orcish] "Well met!": only the quoted speech is in the tongue.
+        said = text:gsub('"([^"]+)"', function(q) return tag .. '"' .. ns.Encode(key, q, true) .. '"' end)
+        prefix = ""
     else
-        said = ns.Encode(key, text, true)
+        said, prefix = ns.Encode(key, text, true), tag
     end
-    for _, msg in ipairs(ns.Split(said, MAX)) do
-        Send(msg, chatType, target)
+    for _, msg in ipairs(ns.Split(said, MAX - #prefix)) do
+        Send(prefix .. msg, chatType, target)
     end
 end
 ns.Say = Say
@@ -231,17 +234,18 @@ end
 ---------------------------------------------------------------------------
 local cache, cached = {}, 0
 
--- { { key, english }, ... } for a line, or false. Emotes: only "quoted" speech, unless there are no quotes.
+-- { { key, english, tagged }, ... } for a line, or false. Emotes: only "quoted" speech (its tag right before the
+-- quote), unless there are no quotes.
 local function Understand(msg, emote)
     local parts = {}
     if emote and msg:find('"[^"]+"') then
-        for q in msg:gmatch('"([^"]+)"') do
-            local key, english = ns.Detect(q)
-            if key then parts[#parts + 1] = { key, '"' .. english .. '"' } end
+        for before, q in msg:gmatch('([^"]*)"([^"]+)"') do
+            local key, english, tagged = ns.Detect((before:match("%[[^%]]+%] $") or "") .. q)
+            if key then parts[#parts + 1] = { key, '"' .. english .. '"', tagged } end
         end
     else
-        local key, english = ns.Detect(msg)
-        if key then parts[1] = { key, english } end
+        local key, english, tagged = ns.Detect(msg)
+        if key then parts[1] = { key, english, tagged } end
     end
     return #parts > 0 and parts
 end
@@ -283,7 +287,7 @@ local function Filter(_, event, msg, author, ...)
     for _, p in ipairs(parts) do
         if mine or Knows(p[1]) then
             shown[#shown + 1] = p[2]
-        elseif EzTonguesDB.showName and not named[p[1]] then
+        elseif EzTonguesDB.showName and not p[3] and not named[p[1]] then  -- a tag already names it
             named[p[1]] = true
             shown[#shown + 1] = Label(p[1])
         end
@@ -313,7 +317,7 @@ local function Test(arg)
     local said = ns.Encode(key, text)
     local back = ns.Decode(key, said)
     Print(Label(key) .. ":")
-    DEFAULT_CHAT_FRAME:AddMessage("  " .. said)
+    DEFAULT_CHAT_FRAME:AddMessage("  " .. (EzTonguesDB.tag and ns.Tag(key) or "") .. said)
     DEFAULT_CHAT_FRAME:AddMessage("  |cffa0a0a0" .. (back or "(doesn't decode!)") ..
         (back == text and "" or "  |cffff6060(differs from what you typed)") .. "|r")
 end

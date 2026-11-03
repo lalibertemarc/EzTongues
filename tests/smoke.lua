@@ -288,6 +288,15 @@ sent = {}
 slash("orcish Victory or death, Thrall!")
 check(#sent == 1 and sent[1].chatType == "SAY", "/tongue orcish says it")
 local said = sent[1] and sent[1].msg or ""
+check(said:find("^%[Orcish%] ") ~= nil, "line starts with its language: " .. said)
+
+-- What a sent line says in Orcish, read through its tag.
+local function Said(msg)
+    local key, english, tagged = ns.Detect(msg)
+    return key == "orcish" and tagged and english
+end
+check(ns.Detect("[Orcish] Hello there") == nil, "a tag on plain English isn't a tongue")
+check(ns.Detect("[Thalassian] " .. ns.Encode("orcish", "Hello there")) == nil, "a tag picks the only tongue tried")
 check(said:find("Lok'tar ogar", 1, true) ~= nil, "phrase in the line: " .. said)
 
 sent = {}
@@ -302,22 +311,31 @@ slash("learn tha")
 slash("thalassian e smiles. \"Well met, friend.\"")
 check(#sent == 1 and sent[1].chatType == "EMOTE", "emote sent")
 local emote = sent[1] and sent[1].msg or ""
-check(emote:find("^smiles%. \"") ~= nil, "emote narration stays English: " .. emote)
+check(emote:find("^smiles%. %[Thalassian%] \"") ~= nil, "emote narration stays English, tag before the quote: " .. emote)
 
 target = { name = "Jaina", surname = "Proudmoore" }
 sent = {}
 slash("orc w jaina Proudmoore I see you")
 check(sent[1] and sent[1].chatType == "WHISPER" and sent[1].to == "Jaina Proudmoore", "whisper to target's full name")
-check(sent[1] and ns.Decode("orcish", sent[1].msg) == "I see you", "whisper text: " .. (sent[1] and sent[1].msg or ""))
+check(sent[1] and Said(sent[1].msg) == "I see you", "whisper text: " .. (sent[1] and sent[1].msg or ""))
 sent = {}
 slash("orc Look at %t over there")
-check(sent[1] and ns.Decode("orcish", sent[1].msg) == "Look at Jaina over there", "%t filled in before encoding")
+check(sent[1] and Said(sent[1].msg) == "Look at Jaina over there", "%t filled in before encoding")
 
 -- Long lines go out in pieces of 255 bytes or less.
 sent = {}
 slash("orcish " .. string.rep("Victory or death, my friends, we march to the gates of the city tonight! ", 8))
 check(#sent >= 3, "long line split")
-for _, m in ipairs(sent) do check(#m.msg <= 255 and ns.Detect(m.msg) == "orcish", "piece ok: " .. m.msg) end
+for _, m in ipairs(sent) do check(#m.msg <= 255 and Said(m.msg), "piece ok, with its tag: " .. m.msg) end
+
+-- Tags off: the line goes out bare and still decodes.
+EzTonguesDB.tag = false
+sent = {}
+slash("orcish Victory or death, Thrall!")
+local bare = sent[1] and sent[1].msg or ""
+check(bare ~= "" and not bare:find("[", 1, true) and select(2, ns.Detect(bare)) == "Victory or death, Thrall!",
+    "no tag when off: " .. bare)
+EzTonguesDB.tag = true
 
 -- Hearing it: someone else's line, as someone who knows Orcish and Thalassian.
 local filter = filters.CHAT_MSG_SAY
@@ -327,7 +345,9 @@ local _, out2 = filters.CHAT_MSG_EMOTE(nil, "CHAT_MSG_EMOTE", emote, "Bob")
 check(out2 == emote .. " |cffa0a0a0(\"Well met, friend.\")|r", "emote quote translated: " .. tostring(out2))
 slash("forget orcish")
 local _, out3 = filter(nil, "CHAT_MSG_SAY", said, "Bob")
-check(out3 == said .. " |cffa0a0a0(Orcish)|r", "unknown language named: " .. tostring(out3))
+check(out3 == nil, "unknown tagged language left alone, the tag names it: " .. tostring(out3))
+local _, out4 = filter(nil, "CHAT_MSG_SAY", bare, "Bob")
+check(out4 == bare .. " |cffa0a0a0(Orcish)|r", "unknown untagged language named: " .. tostring(out4))
 local _, own = filter(nil, "CHAT_MSG_SAY", said, "Grukk")
 check(own == said .. " |cffa0a0a0(Victory or death, Thrall!)|r", "own line always translated: " .. tostring(own))
 EzTonguesDB.showName = false
@@ -347,7 +367,7 @@ coreEvents.scripts.OnEvent(coreEvents, "CHAT_MSG_WHISPER", "hi", "Bob-Smith")
 check(EzTonguesCharDB.whispers[1] == "Bob Smith", "whisper author remembered as First Surname")
 sent = {}
 slash("orc w bob Smith Hello")
-check(sent[1] and sent[1].to == "Bob Smith" and ns.Decode("orcish", sent[1].msg) == "Hello", "whisper to a remembered name")
+check(sent[1] and sent[1].to == "Bob Smith" and Said(sent[1].msg) == "Hello", "whisper to a remembered name")
 group = { { name = "Thrall", surname = "Hellscream" } }
 sent = {}
 slash("orc w thrall For the Horde")
@@ -378,7 +398,7 @@ local function Channel() return header.label.text end
 check(Channel() == "Say:", "box starts on Say")
 editBox.text = "/p Well met"
 local m = Enter()
-check(m.chatType == "PARTY" and ns.Decode("orcish", m.msg) == "Well met", "box sends a /p line to party")
+check(m.chatType == "PARTY" and Said(m.msg) == "Well met", "box sends a /p line to party")
 
 -- A channel command and a space switch the box, and it stays there.
 Open()
@@ -398,7 +418,7 @@ Type("Proudmoore ")
 check(editBox.text == "", "typed surname skipped: " .. editBox.text)
 Type("I see you")
 m = Enter()
-check(m.chatType == "WHISPER" and m.to == "Jaina Proudmoore" and ns.Decode("orcish", m.msg) == "I see you",
+check(m.chatType == "WHISPER" and m.to == "Jaina Proudmoore" and Said(m.msg) == "I see you",
     "box whispers the target")
 Open()
 Type("/w jaina Proudmoore right away")

@@ -3,7 +3,8 @@
 -- line alone carries its meaning and decode(encode(x)) == x.
 --   ns.Encode(key, line[, glue]) -> the line in that tongue (glue: phrase spaces become \1 so Split keeps them whole)
 --   ns.Decode(key, line)         -> the English line, or nil unless every word is one of that tongue's
---   ns.Detect(line)              -> key, English line: the tongue a whole line is in, or nil
+--   ns.Detect(line)              -> key, English line, tagged: the tongue a whole line is in, or nil
+--   ns.Tag(key)                  -> "[Orcish] ", the tag a line can start with (as NPCs' lines in a language do)
 --   ns.Split(line, max)          -> the line cut at spaces into chat messages of at most max bytes
 -- A word is letters with single apostrophes inside (don't, Kel'Thuzad); case is kept as lower, Capitalized or ALL
 -- CAPS (a MiXeD word is ciphered, which keeps every letter's case). Chat links (|H...|h...|h and other | escapes),
@@ -114,8 +115,15 @@ end
 ---------------------------------------------------------------------------
 -- Tongues
 ---------------------------------------------------------------------------
-local byKey = {}
-for _, t in ipairs(ns.TONGUES) do byKey[t.key] = t end
+local byKey, byLabel = {}, {}
+for _, t in ipairs(ns.TONGUES) do
+    byKey[t.key] = t
+    byLabel[t.label] = t
+end
+
+function ns.Tag(key)
+    return "[" .. byKey[key].label .. "] "
+end
 
 local function ByLength(a, b)
     if #a.from ~= #b.from then return #a.from > #b.from end
@@ -211,8 +219,15 @@ end
 
 -- A line is in a tongue when every word in it is that tongue's (native words and markers are never shared, so at
 -- most one tongue fits, but for lines made only of phrases two tongues share). Plain English never fits: native
--- words are never common English words.
+-- words are never common English words. A line tagged "[Orcish] " is only tried in that tongue.
 function ns.Detect(line)
+    local label, rest = line:match("^%[([^%]]+)%] (.*)$")
+    if byLabel[label] then
+        local key = byLabel[label].key
+        local english = ns.Decode(key, rest)
+        if english then return key, english, true end
+        return
+    end
     local s, saved = Protect(line)
     if not s:find("[A-Za-z]") then return end
     local n = #saved

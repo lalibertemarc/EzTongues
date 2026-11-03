@@ -34,6 +34,10 @@ function ns.BuildSettings(start)
         for _, t in ipairs(ns.TONGUES) do container:Add(t.key, t.label, t.desc) end
         return container:GetData()
     end, "What /tongue <text> and the box speak in. /tongue <language> <text> speaks any other one you know.")
+    local tag = Settings.RegisterAddOnSetting(category, "EZTONGUES_TAG", "tag", EzTonguesDB,
+        Settings.VarType.Boolean, "Name the language in your lines", ns.DEFAULTS.tag)
+    Settings.CreateCheckbox(category, tag,
+        "Starts your lines with the language, as NPCs' lines do: [Orcish] Lok'tar ogar! Everyone sees it, with EzTongues or not.")
     Button("Sample line", "Preview", function() ns.Test(ns.SAMPLE) end,
         "Prints a sample line in your default language, and its translation, to your chat. Only you see it.")
     Button("Tongue box", "Open", function() ns.OpenBox() end,
@@ -48,7 +52,7 @@ function ns.BuildSettings(start)
     local showName = Settings.RegisterAddOnSetting(category, "EZTONGUES_SHOW_NAME", "showName", EzTonguesDB,
         Settings.VarType.Boolean, "Name languages you don't know", ns.DEFAULTS.showName)
     Settings.CreateCheckbox(category, showName,
-        "Adds (Thalassian) after a line in a language your character doesn't know, so you know what you're not understanding.")
+        "Adds (Thalassian) after a line in a language your character doesn't know, so you know what you're not understanding. Lines that start with [Thalassian] already say it.")
     local color = Settings.RegisterAddOnSetting(category, "EZTONGUES_COLOR", "color", EzTonguesDB,
         Settings.VarType.String, "Translation color", ns.DEFAULTS.color)
     Settings.CreateDropdown(category, color, function()

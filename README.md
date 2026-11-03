@@ -4,9 +4,10 @@ Speak your race's language. Your line goes out as Thalassian, Orcish, Dwarvish..
 
 > /tongue orcish Well met, friend. Have you seen Thrall?
 >
-> **Everyone sees:** Throm-ka, kanoka. Re'ka kek re'va Grak'Kztomm?
-> **Who knows Orcish also sees:** Throm-ka, kanoka. Re'ka kek re'va Grak'Kztomm? *(Well met, friend. Have you seen Thrall?)*
-> **Who doesn't:** Throm-ka, kanoka. Re'ka kek re'va Grak'Kztomm? *(Orcish)*
+> **Everyone sees:** [Orcish] Throm-ka, kanoka. Re'ka kek re'va Grak'Kztomm?
+> **Who knows Orcish also sees:** [Orcish] Throm-ka, kanoka. Re'ka kek re'va Grak'Kztomm? *(Well met, friend. Have you seen Thrall?)*
+
+The `[Orcish]` tag is how NPCs' lines in a language look; switch it off on the options page ("Name the language in your lines") and those who don't know the language see *(Orcish)* after the line instead, if they run EzTongues.
 
 Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali, Gutterspeak, Demonic, Draconic and Titan.
 
@@ -29,6 +30,8 @@ Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali,
 **The box.** Bind a key under Options > Keybindings > EzTongues (or `/tongue box`). Type, press Enter to say it. The dropdown on the left picks the language (ones you don't know are greyed). The channel shows at the start of the line, as in chat (`Say:`, `Tell Jaina Proudmoore:`), and the box stays on it. To switch, start a line the way chat does: `/y`, `/p`, `/g`, `/o`, `/r`, `/e` or `/w name` and a space. `/w jaina ` fills in the surname of someone the box knows: your target, the people you whispered with (either way, the last 10 per character) and your group. A first name it doesn't know waits for its surname (`/w Bob Smith `), since Forever whispers need both; `/w "First Surname" ` works too. Tab whispers the next of those people, and clicking the channel lists every channel and person. Up/Down bring back earlier lines with their channel; Escape closes. Click anywhere else and it lets go of the keyboard so you can walk, but stays open.
 
 **Knowing a language is the honor system.** A new character knows its race's language (Forsaken: Gutterspeak), Orcish if it's Horde and Demonic if it's a warlock. Alliance common is just Common, what you type. Learn or forget the rest on the options page or with `/tongue learn`. Anyone with EzTongues *could* read every language; what your character understands is up to you. Your own lines always show their translation.
+
+In an emote, the tag goes right before each "quote": `smiles. [Orcish] "Throm-ka!"`. Long lines carry it on every piece.
 
 Chat links, raid marks like `{skull}`, numbers and punctuation come through untouched, capitals are kept (Capitalized, ALL CAPS), `%t` becomes your target's name before the line is turned into the language, and long lines are split at the 255-character chat limit.
 
