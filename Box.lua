@@ -1,5 +1,5 @@
 -- EzTongues' box, as in EzAccent: an edit box of its own, like the chat's. The dropdown on the left picks the
--- language (it's also your default). The channel shows at the start of the line ("Say:", "Tell Bob Smith:"); start
+-- language (it's also your default) or one of its dialects. The channel shows at the start of the line ("Say:", "Tell Bob Smith:"); start
 -- a line the way chat does to switch it (/y, /p, /e ... or /w name, then a space), click it for a list of channels
 -- and people to whisper, or press Tab to whisper the next person the box knows (your target, people you whispered
 -- with, your group). Enter says the line, Escape closes the box, Up/Down go through this session's lines. A click
@@ -206,7 +206,12 @@ local function ToggleChannels()
             items[#items + 1] = {
                 text = m.label .. "...", note = m.cmd, color = color,
                 func = function()
-                    held = Trim(edit:GetText()) ~= "" and edit:GetText() or nil
+                    -- An unfinished command ("/w Na", picked twice) is no line to give back: keep the one held.
+                    local line = edit:GetText()
+                    local cmd = line:match("^/(%S+)")
+                    if not (cmd and ns.BOX_CHANNELS[cmd:lower()]) then
+                        held = Trim(line) ~= "" and line or nil
+                    end
                     edit:SetText("/w ")
                     edit:SetFocus()
                     edit:SetCursorPosition(3)
@@ -277,25 +282,43 @@ local function SwitchFromText(self)
     self:SetCursorPosition(#rest)
 end
 
--- The language: a dropdown listing every tongue, the ones you don't know greyed.
+-- The language: a dropdown listing every tongue, the ones you don't know greyed, each followed by the dialects you
+-- know of it. Picking a dialect speaks its tongue in it; picking the tongue speaks it plain.
 local function ShowLanguage()
-    langButton:SetText(ns.Label(ns.Default()))
-    box.title:SetText("EzTongues" .. (ns.Knows(ns.Default()) and "" or "  |cffff6060(you don't know it)|r"))
+    local key = ns.Default()
+    local dialect = ns.SpokenDialect(key)
+    langButton:SetText(dialect and dialect.name or ns.Label(key))
+    box.title:SetText("EzTongues" .. (dialect and "  |cffa0a0a0" .. ns.Label(key) .. ", " .. dialect.name .. " dialect|r" or "") ..
+        (ns.Knows(key) and "" or "  |cffff6060(you don't know it)|r"))
+end
+
+function ns.RefreshBox()
+    if box and box:IsShown() then ShowLanguage() end
 end
 
 local function ToggleLanguages()
     local items = {}
     for _, t in ipairs(ns.TONGUES) do
         local key = t.key
-        items[#items + 1] = {
-            text = t.label, note = not ns.Knows(key) and "unknown" or nil, grey = not ns.Knows(key),
-            checked = key == ns.Default(),
-            func = function()
+        local known, spoken = ns.Knows(key), ns.SpokenDialect(key)
+        local function Pick(name)
+            return function()
                 EzTonguesCharDB.default = key
+                ns.SetSpokenDialect(key, name)
                 ShowLanguage()
                 edit:SetFocus()
-            end,
+            end
+        end
+        items[#items + 1] = {
+            text = t.label, note = not known and "unknown" or nil, grey = not known,
+            checked = key == ns.Default() and not spoken, func = Pick(nil),
         }
+        for _, d in ipairs(ns.Dialects(key)) do
+            items[#items + 1] = {
+                text = "   " .. d.name, note = "dialect", grey = not known,
+                checked = key == ns.Default() and spoken and spoken.name == d.name, func = Pick(d.name),
+            }
+        end
     end
     ToggleList(langButton, items, 170)
 end

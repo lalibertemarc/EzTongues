@@ -28,5 +28,5 @@ read_globals = {
     "GetBuildInfo", "UnitRace", "UnitClass", "UnitFactionGroup", "UnitName", "UnitExists", "UnitIsPlayer",
     "SendChatMessage", "InCombatLockdown", "IsInGroup", "IsInRaid", "IsInGuild", "GetNumGroupMembers", "ChatTypeInfo",
     -- Lua helpers WoW adds
-    "tContains",
+    "tContains", "wipe",
 }

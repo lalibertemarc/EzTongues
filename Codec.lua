@@ -1,10 +1,13 @@
 -- EzTongues' line codec. A line goes out word by word: a lore phrase if one matches (longest first), else the
 -- dictionary's native word (Dictionary.lua), else the letter cipher (Cipher.lua). Every step can be undone, so the
 -- line alone carries its meaning and decode(encode(x)) == x.
---   ns.Encode(key, line[, glue]) -> the line in that tongue (glue: phrase spaces become \1 so Split keeps them whole)
---   ns.Decode(key, line)         -> the English line, or nil unless every word is one of that tongue's
---   ns.Detect(line)              -> key, English line, tagged: the tongue a whole line is in, or nil
---   ns.Tag(key)                  -> "[Orcish] ", the tag a line can start with (as NPCs' lines in a language do)
+--   ns.Encode(key, line[, glue[, drift]]) -> the line in that tongue (glue: phrase spaces become \1 so Split keeps
+--                                  them whole; drift: a dialect's (Dialect.lua), laid over all but links and such)
+--   ns.Decode(key, line[, drift])  -> the English line, or nil unless every word is one of that tongue's
+--   ns.Detect(line[, dialects])    -> key, English line, tagged, dialect: the tongue a whole line is in, or nil.
+--                                  A "[Orcish dialect] " line is only tried in dialects(key) ({ { drift }, ... })
+--   ns.Tag(key[, dialect])         -> "[Orcish] " ("[Orcish dialect] "), the tag a line can start with (as NPCs'
+--                                  lines in a language do)
 --   ns.Split(line, max)          -> the line cut at spaces into chat messages of at most max bytes
 -- A word is letters with single apostrophes inside (don't, Kel'Thuzad); case is kept as lower, Capitalized or ALL
 -- CAPS (a MiXeD word is ciphered, which keeps every letter's case). Chat links (|H...|h...|h and other | escapes),
@@ -121,8 +124,8 @@ for _, t in ipairs(ns.TONGUES) do
     byLabel[t.label] = t
 end
 
-function ns.Tag(key)
-    return "[" .. byKey[key].label .. "] "
+function ns.Tag(key, dialect)
+    return "[" .. byKey[key].label .. (dialect and " dialect" or "") .. "] "
 end
 
 local function ByLength(a, b)
@@ -185,15 +188,21 @@ local function SwapPhrases(s, list, saved, glue)
     return s, count
 end
 
-function ns.Encode(key, line, glue)
+function ns.Encode(key, line, glue, drift)
     local t = Speaking(key)
     local s, saved = Protect(line)
+    local protected = #saved
     s = SwapPhrases(s, t.toNative, saved, glue)
     s = MapWords(s, function(w)
         local case = Case(w)
         local nat = case ~= "mixed" and t.words[w:lower()]
         return nat and ApplyCase(nat, case) or ns.Cipher(t, w)
     end)
+    if drift then
+        -- Phrases drift too (saved after the protected tokens); links and the like never do.
+        s = ns.Drift(s, drift)
+        for i = protected + 1, #saved do saved[i] = ns.Drift(saved[i], drift) end
+    end
     return Restore(s, saved)
 end
 
@@ -212,16 +221,29 @@ local function DecodeProtected(t, s, saved)
     return Restore(s, saved)
 end
 
-function ns.Decode(key, line)
+function ns.Decode(key, line, drift)
     local s, saved = Protect(line)
+    if drift then s = ns.Drift(s, drift) end
     return DecodeProtected(Tongue(key), s, saved)
 end
 
 -- A line is in a tongue when every word in it is that tongue's (native words and markers are never shared, so at
 -- most one tongue fits, but for lines made only of phrases two tongues share). Plain English never fits: native
--- words are never common English words. A line tagged "[Orcish] " is only tried in that tongue.
-function ns.Detect(line)
+-- words are never common English words. A line tagged "[Orcish] " is only tried in that tongue, and one tagged
+-- "[Orcish dialect] " only in the Orcish dialects given (the first that reads it wins).
+function ns.Detect(line, dialects)
     local label, rest = line:match("^%[([^%]]+)%] (.*)$")
+    local base = label and label:match("^(.-) dialect$")
+    if byLabel[base] then
+        local key = byLabel[base].key
+        for _, d in ipairs(dialects and dialects(key) or {}) do
+            -- Another dialect's line can read as nonsense in this one (a lone ciphered name, say): it's only this
+            -- dialect's if saying it back gives the very same line.
+            local english = ns.Decode(key, rest, d.drift)
+            if english and ns.Encode(key, english, nil, d.drift) == rest then return key, english, true, d end
+        end
+        return
+    end
     if byLabel[label] then
         local key = byLabel[label].key
         local english = ns.Decode(key, rest)

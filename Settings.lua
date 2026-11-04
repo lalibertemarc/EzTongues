@@ -48,6 +48,10 @@ function ns.BuildSettings(start)
         function() Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID, "EzTongues") end,
         "Bind a key to open the box in the EzTongues section of the Key Bindings page.")
 
+    Header("Dialects")
+    Button("Your dialects", "List", function() ns.DialectCommand("") end,
+        "A dialect is a guild's or group's own way of speaking a tongue: /tongue dialect add orcish Bloodfang <passphrase>. Everyone who adds the same passphrase to that tongue reads it; everyone else sees [Orcish dialect] and no translation. Lists the ones you know and the commands in your chat.")
+
     Header("Hearing")
     local showName = Settings.RegisterAddOnSetting(category, "EZTONGUES_SHOW_NAME", "showName", EzTonguesDB,
         Settings.VarType.Boolean, "Name languages you don't know", ns.DEFAULTS.showName)

@@ -10,6 +10,7 @@
 Data.lua
 Dictionary.lua
 Cipher.lua
+Dialect.lua
 Codec.lua
 Settings.lua
 Core.lua

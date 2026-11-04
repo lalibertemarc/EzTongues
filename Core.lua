@@ -34,6 +34,7 @@ local function Resolve(word)
     if byKey[word] then return word end
     return ns.ALIASES[word]
 end
+ns.ResolveTongue = Resolve
 
 local function Label(key)
     return byKey[key] and byKey[key].label or key
@@ -194,15 +195,18 @@ local function Say(key, text, chatType, target)
     if chatType == "WHISPER" and not target then return Print("Whisper whom? /tongue <lang> w <name> <text>") end
     if ChatLocked() then return Print("The game blocks addon chat right now.") end
     text = ExpandTarget(text)
-    -- "[Orcish] " first, as NPCs' lines in a language: everyone sees what's spoken, and it's on every piece.
-    local tag = EzTonguesDB.tag and ns.Tag(key) or ""
+    -- "[Orcish] " first, as NPCs' lines in a language: everyone sees what's spoken, and it's on every piece. A
+    -- dialect's lines are always tagged "[Orcish dialect] ": that's how they're told from plain ones.
+    local dialect = ns.SpokenDialect(key)
+    local drift = dialect and dialect.drift
+    local tag = (dialect or EzTonguesDB.tag) and ns.Tag(key, dialect ~= nil) or ""
     local said, prefix
     if chatType == "EMOTE" and text:find('"[^"]+"') then
         -- /e smiles. [Orcish] "Well met!": only the quoted speech is in the tongue.
-        said = text:gsub('"([^"]+)"', function(q) return tag .. '"' .. ns.Encode(key, q, true) .. '"' end)
+        said = text:gsub('"([^"]+)"', function(q) return tag .. '"' .. ns.Encode(key, q, true, drift) .. '"' end)
         prefix = ""
     else
-        said, prefix = ns.Encode(key, text, true), tag
+        said, prefix = ns.Encode(key, text, true, drift), tag
     end
     for _, msg in ipairs(ns.Split(said, MAX - #prefix)) do
         Send(prefix .. msg, chatType, target)
@@ -235,16 +239,16 @@ end
 local cache, cached = {}, 0
 
 -- { { key, english, tagged }, ... } for a line, or false. Emotes: only "quoted" speech (its tag right before the
--- quote), unless there are no quotes.
+-- quote), unless there are no quotes. Dialect lines read only in the dialects this character knows.
 local function Understand(msg, emote)
     local parts = {}
     if emote and msg:find('"[^"]+"') then
         for before, q in msg:gmatch('([^"]*)"([^"]+)"') do
-            local key, english, tagged = ns.Detect((before:match("%[[^%]]+%] $") or "") .. q)
+            local key, english, tagged = ns.Detect((before:match("%[[^%]]+%] $") or "") .. q, ns.Dialects)
             if key then parts[#parts + 1] = { key, '"' .. english .. '"', tagged } end
         end
     else
-        local key, english, tagged = ns.Detect(msg)
+        local key, english, tagged = ns.Detect(msg, ns.Dialects)
         if key then parts[1] = { key, english, tagged } end
     end
     return #parts > 0 and parts
@@ -264,6 +268,11 @@ local function Heard(msg, emote)
     return parts
 end
 ns.Understand = Understand
+
+-- Dialects learned or forgotten read lines differently.
+function ns.ForgetHeard()
+    cache, cached = {}, 0
+end
 
 local function IsMe(author)
     if type(author) ~= "string" or issecret(author) then return false end
@@ -314,10 +323,12 @@ local function Test(arg)
     local text = key and rest or arg
     key = key or Default()
     if text == "" then return Print("/tongue test [lang] <text> shows your line in a tongue and back, sends nothing.") end
-    local said = ns.Encode(key, text)
-    local back = ns.Decode(key, said)
-    Print(Label(key) .. ":")
-    DEFAULT_CHAT_FRAME:AddMessage("  " .. (EzTonguesDB.tag and ns.Tag(key) or "") .. said)
+    local dialect = ns.SpokenDialect(key)
+    local drift = dialect and dialect.drift
+    local said = ns.Encode(key, text, nil, drift)
+    local back = ns.Decode(key, said, drift)
+    Print(Label(key) .. (dialect and ", " .. dialect.name .. " dialect:" or ":"))
+    DEFAULT_CHAT_FRAME:AddMessage("  " .. ((dialect or EzTonguesDB.tag) and ns.Tag(key, dialect ~= nil) or "") .. said)
     DEFAULT_CHAT_FRAME:AddMessage("  |cffa0a0a0" .. (back or "(doesn't decode!)") ..
         (back == text and "" or "  |cffff6060(differs from what you typed)") .. "|r")
 end
@@ -377,6 +388,7 @@ local HELP = {
     "/tongue test [lang] <text> - show it in the language and back, sends nothing",
     "/tongue list - every language, and which you know",
     "/tongue learn|forget <lang|all> - honor system: learn what your character speaks",
+    "/tongue dialect - your guild's own way of speaking a tongue: a name and a passphrase you share (add, use, plain, forget)",
     "/tongue box - the edit box: language and channel on its left, or start a line with /y, /p, /w name... (also a key binding: Options > Keybindings > EzTongues)",
     "/tongue config - the options page (Options > AddOns > EzTongues)",
 }
@@ -394,6 +406,8 @@ local COMMANDS = {
     forget = function(arg) SetKnown(arg, false) end,
     default = SetDefault,
     test = Test,
+    dialect = function(arg) ns.DialectCommand(arg) end,
+    dialects = function(arg) ns.DialectCommand(arg) end,
     box = function() ns.OpenBox() end,
     config = OpenSettings,
 }
@@ -431,6 +445,8 @@ ev:SetScript("OnEvent", function(_, event, ...)
         for _, key in ipairs(start) do EzTonguesCharDB.known[key] = true end
     end
     if type(EzTonguesCharDB.whispers) ~= "table" then EzTonguesCharDB.whispers = {} end
+    if type(EzTonguesCharDB.dialects) ~= "table" then EzTonguesCharDB.dialects = {} end
+    if type(EzTonguesCharDB.speak) ~= "table" then EzTonguesCharDB.speak = {} end
     if not byKey[EzTonguesCharDB.default] then EzTonguesCharDB.default = start[1] or ns.TONGUES[1].key end
     ns.BuildSettings(start)
 end)

@@ -75,6 +75,10 @@ function IsInRaid() return false end
 function IsInGuild() return false end
 function UnitIsPlayer() return true end
 function InCombatLockdown() return false end
+function wipe(t)
+    for k in pairs(t) do t[k] = nil end
+    return t
+end
 function tContains(t, v)
     for _, x in ipairs(t) do if x == v then return true end end
     return false
@@ -230,6 +234,62 @@ for _, key in ipairs(KEYS) do
             end
         end
     end
+end
+
+---------------------------------------------------------------------------
+-- Dialects: a passphrase's drift round-trips, is its own inverse, and only its own dialect reads it
+---------------------------------------------------------------------------
+local PASSES = { "wolves of the north", "the silver hand" }
+local dialectTrips, drifted, misread = 0, 0, 0
+for _, key in ipairs(KEYS) do
+    for _, pass in ipairs(PASSES) do
+        local d = ns.DialectDrift(key, pass)
+        local other = ns.DialectDrift(key, pass .. "!")
+        local function mine() return { { drift = d } } end
+        local function theirs() return { { drift = other } } end
+        for _, s in ipairs(LINES) do
+            local e = ns.Encode(key, s, nil, d)
+            check(ns.Drift(ns.Drift(e, d), d) == e, key .. " drift undoes itself: " .. e)
+            if s:gsub("|c.-|r", ""):gsub("{.-}", ""):gsub("%%%a", ""):find("[A-Za-z]") then
+                check(ns.Decode(key, e, d) == s, ("%s dialect round trip:\n  in   %s\n  out  %s"):format(key, s, e))
+                local tagged = ns.Tag(key, true) .. e
+                local k2, back, isTagged, which = ns.Detect(tagged, mine)
+                check(k2 == key and back == s and isTagged and which, key .. " dialect line detected: " .. tagged)
+                check(ns.Detect(tagged) == nil, key .. " dialect line unread without its dialect: " .. tagged)
+                -- A short line can read as something else in another dialect of the same tongue (each of its
+                -- words drifts onto a real word there): rare, but nothing in the line tells them apart.
+                local k3, back3 = ns.Detect(tagged, theirs)
+                if k3 and back3 ~= s then misread = misread + 1 end
+                if e ~= ns.Encode(key, s) then drifted = drifted + 1 end
+                dialectTrips = dialectTrips + 1
+            end
+        end
+    end
+end
+check(misread <= dialectTrips / 500, ("another dialect rarely misreads a line (%d of %d)"):format(misread, dialectTrips))
+check(drifted > dialectTrips * 0.9, ("dialect lines differ from plain ones (%d of %d)"):format(drifted, dialectTrips))
+local function Serialize(d)
+    local l = {}
+    for a, b in pairs(d) do l[#l + 1] = a .. b end
+    table.sort(l)
+    return table.concat(l)
+end
+check(Serialize(ns.DialectDrift("orcish", "  Wolves of  the NORTH ")) == Serialize(ns.DialectDrift("orcish", "wolves of the north")),
+    "passphrase case and spaces don't matter")
+check(Serialize(ns.DialectDrift("orcish", "bloodfang")) ~= Serialize(ns.DialectDrift("thalassian", "bloodfang")),
+    "same passphrase, other tongue: another drift")
+local maps, distinct = {}, 0
+for i = 1, 300 do
+    local id = Serialize(ns.DialectDrift("orcish", "guild number " .. i))
+    if not maps[id] then distinct, maps[id] = distinct + 1, true end
+end
+check(distinct >= 295, "passphrases give their own drifts (" .. distinct .. " of 300)")
+for _, p in ipairs(PINNED.dialects) do
+    local key, pass, s, want = p[1], p[2], p[3], p[4]
+    local d = ns.DialectDrift(key, pass)
+    local got = ns.Encode(key, s, nil, d)
+    check(got == want, ("%s dialect \"%s\" pinned changed:\n  was  %s\n  now  %s"):format(key, pass, want, got))
+    check(ns.Decode(key, want, d) == s, key .. " dialect pinned decodes")
 end
 
 ---------------------------------------------------------------------------
@@ -481,6 +541,16 @@ list.rows[rows].scripts.OnClick(list.rows[rows])
 check(editBox.text == "/w ", "Whisper... starts /w")
 Type("/w bob ")
 check(Channel() == "Tell Bob Smith:" and editBox.text == "hold this", "line back after the name: " .. editBox.text)
+-- Picking it again over an unfinished /w keeps the held line, not the /w.
+Type("/s ")
+Type("hold this")
+header.scripts.OnClick(header)
+list.rows[rows].scripts.OnClick(list.rows[rows])
+Type("/w bo")
+header.scripts.OnClick(header)
+list.rows[rows].scripts.OnClick(list.rows[rows])
+Type("/w bob ")
+check(Channel() == "Tell Bob Smith:" and editBox.text == "hold this", "Whisper... twice, /w not held: " .. editBox.text)
 -- Picking another channel instead drops the unused /w and gives the line back too.
 Type("/s ")
 Type("hold that")
@@ -493,6 +563,72 @@ check(Channel() == "Say:" and editBox.text == "hold that", "unused /w dropped on
 Type("/w ")
 editBox.scripts.OnTabPressed(editBox)
 check(Channel() == "Tell Jaina Proudmoore:" and editBox.text == "", "unused /w dropped on Tab: " .. editBox.text)
+
+-- Dialects end to end: add one, speak it, hear it; speak plain, still hear it; forget it.
+local GOLD = "|cffe6c35c"
+slash("dialect add orcish Bloodfang wolves of the north")
+check(#EzTonguesCharDB.dialects == 1 and EzTonguesCharDB.speak.orcish == "bloodfang", "dialect added and spoken")
+sent = {}
+slash("orcish Victory or death, Thrall!")
+local dsaid = sent[1] and sent[1].msg or ""
+check(dsaid:find("^%[Orcish dialect%] ") ~= nil and dsaid ~= said, "dialect line tagged as one: " .. dsaid)
+local _, heard = filter(nil, "CHAT_MSG_SAY", dsaid, "Bob")
+check(heard == dsaid .. " " .. GOLD .. "(Victory or death, Thrall!)|r", "dialect line read by who knows it: " .. tostring(heard))
+check(select(2, filter(nil, "CHAT_MSG_SAY", said, "Bob")) == said .. " " .. GOLD .. "(Victory or death, Thrall!)|r",
+    "plain lines still read")
+EzTonguesDB.tag = false
+sent = {}
+slash("orcish Hello")
+check(sent[1] and sent[1].msg:find("^%[Orcish dialect%] ") ~= nil, "dialect lines keep their tag with tags off")
+EzTonguesDB.tag = true
+sent = {}
+slash('orcish e grins. "Well met"')
+local dem = sent[1] and sent[1].msg or ""
+check(dem:find('^grins%. %[Orcish dialect%] "') ~= nil, "dialect emote: " .. dem)
+check(select(2, filters.CHAT_MSG_EMOTE(nil, "CHAT_MSG_EMOTE", dem, "Bob")) == dem .. " " .. GOLD .. '("Well met")|r',
+    "dialect emote read")
+printed = {}
+slash("test orcish Hello")
+check(#printed == 3 and printed[1]:find("Bloodfang dialect", 1, true) and printed[2]:find("[Orcish dialect]", 1, true)
+    and printed[3]:find("Hello", 1, true), "/tongue test speaks the dialect")
+slash("dialect add orcish Wolfpack  Wolves of the NORTH ")
+check(#EzTonguesCharDB.dialects == 1, "same passphrase isn't added twice")
+slash("dialect add orcish Ironjaw abc")
+check(#EzTonguesCharDB.dialects == 1, "short passphrase refused")
+slash("dialect add orcish Ironjaw iron and blood")
+check(#EzTonguesCharDB.dialects == 2 and EzTonguesCharDB.speak.orcish == "ironjaw", "second dialect added and spoken")
+check(select(2, filter(nil, "CHAT_MSG_SAY", dsaid, "Bob")) == heard, "still reads the first one")
+slash("dialect use bloodfang")
+check(EzTonguesCharDB.speak.orcish == "bloodfang", "/tongue dialect use")
+slash("dialect plain orc")
+check(EzTonguesCharDB.speak.orcish == nil, "/tongue dialect plain")
+sent = {}
+slash("orcish Victory or death, Thrall!")
+check(sent[1] and sent[1].msg == said, "plain line again: " .. (sent[1] and sent[1].msg or ""))
+check(select(2, filter(nil, "CHAT_MSG_SAY", dsaid, "Bob")) == heard, "speaking plain, still reads the dialect")
+
+-- The box's dropdown lists dialects under their tongue; picking one speaks it.
+Open()
+buttons[2].scripts.OnClick(buttons[2])
+local orcAt, shownRows = 0, 0
+for i, t in ipairs(ns.TONGUES) do if t.key == "orcish" then orcAt = i end end
+for _, r in ipairs(list.rows) do if r.shown then shownRows = shownRows + 1 end end
+check(shownRows == #ns.TONGUES + 2, "dropdown: every tongue and the two dialects: " .. shownRows)
+list.rows[orcAt + 1].scripts.OnClick(list.rows[orcAt + 1])
+check(EzTonguesCharDB.default == "orcish" and EzTonguesCharDB.speak.orcish == "bloodfang", "box picks the dialect")
+Type("/s ")
+Type("Victory or death, Thrall!")
+check(Enter().msg == dsaid, "box speaks the dialect")
+Open()
+buttons[2].scripts.OnClick(buttons[2])
+list.rows[orcAt].scripts.OnClick(list.rows[orcAt])
+check(EzTonguesCharDB.speak.orcish == nil, "box picks the plain tongue again")
+
+slash("dialect forget Bloodfang")
+check(#EzTonguesCharDB.dialects == 1 and select(2, filter(nil, "CHAT_MSG_SAY", dsaid, "Bob")) == nil,
+    "forgotten dialect no longer read")
+slash("dialect use bloodfang")
+slash("dialect")
 
 printed = {}
 slash("test darnassian Elune be with you, Tyrande.")
