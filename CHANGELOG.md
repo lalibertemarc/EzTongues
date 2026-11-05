@@ -1,6 +1,6 @@
 # EzTongues
 
-## Unreleased
+## v1.0.0-beta.1
 
 - **Whisper from EzAcquaintances.** Its book's Whisper button can open this box already on a whisper to that person (right-click the button and pick "In a tongue").
 - **Long lines no longer get stuck.** The game lets an addon say only one message per key press in say, yell, emotes and channels, so the second piece of a line too long for one message was blocked ("tried to call the protected function"). Now the first piece goes out and the box opens with the rest waiting: press Enter for each (or `/tongue more`), Escape drops them. Party, raid, guild, officer and whispers still get every piece at once.
