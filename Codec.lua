@@ -133,14 +133,11 @@ local function ByLength(a, b)
     return a.from < b.from
 end
 
--- The tongue's tables, built on first use: natives (native -> English) and the phrase lists. Every tongue gets
--- them as soon as chat is heard; words (English -> native) only once you speak it.
+-- The tongue's phrase lists, built on first use (every tongue gets them as soon as chat is heard; they're small).
 local function Tongue(key)
     local t = byKey[key]
-    if not t or t.natives then return t end
+    if not t or t.toNative then return t end
     ns.PrepareCipher(t)
-    local natives = {}
-    for en, nat in (ns.DICTIONARY[key] or ""):gmatch("(%S+) (%S+)") do natives[nat] = en end
     t.toNative, t.toEnglish = {}, {}
     for _, p in ipairs(t.phrases) do
         t.toNative[#t.toNative + 1] = { from = p[1]:lower(), to = p[2]:lower() }
@@ -148,19 +145,49 @@ local function Tongue(key)
     end
     table.sort(t.toNative, ByLength)
     table.sort(t.toEnglish, ByLength)
-    t.natives = natives
     return t
 end
 ns.Tongue = Tongue
 
-local function Speaking(key)
-    local t = Tongue(key)
-    if not t.words then
-        t.words = {}
-        for nat, en in pairs(t.natives) do t.words[en] = nat end
+-- Dictionary words are looked up right in Dictionary.lua's text ("english native\n" lines), never copied into
+-- tables: 11 tongues' tables took ~2 MB once chat was heard, the text is ~250 KB and already loaded. A plain find
+-- over one tongue's ~23 KB is a few microseconds, and the chat filter keeps what it read.
+local find, sub, byte = string.find, string.sub, string.byte
+
+-- Where word sits in d with `before` (a byte) right before it and `after` (a string) right after it, or nil.
+-- Searching word .. after (not before .. word) lets find skip ahead by the word's first letter, not by every
+-- space or line break.
+local function Spot(d, word, before, after)
+    local needle, i = word .. after, 1
+    while true do
+        i = find(d, needle, i, true)
+        if not i then return end
+        local b = i > 1 and byte(d, i - 1) or 10
+        if b == before then return i end
+        i = i + 1
     end
-    return t
 end
+
+-- English word (lower case) -> native word, or nil. Only the English side of a line has a line break before it.
+local function ToNative(key, en)
+    local d = ns.DICTIONARY[key]
+    local i = d and Spot(d, en, 10, " ")
+    if not i then return end
+    local s = i + #en + 1
+    local e = find(d, "\n", s, true)
+    return sub(d, s, (e or #d + 1) - 1)
+end
+
+-- Native word (lower case) -> English word, or nil. Only the native side of a line has a space before it.
+local function ToEnglish(key, nat)
+    local d = ns.DICTIONARY[key]
+    local i = d and Spot(d, nat, 32, "\n")
+    if not i then return end
+    local s = i - 2
+    while s > 0 and byte(d, s) ~= 10 do s = s - 1 end
+    return sub(d, s + 1, i - 2)
+end
+ns.ToNative, ns.ToEnglish = ToNative, ToEnglish
 
 -- Swaps every phrase of list in s for a {n} sentinel holding its other side; returns s and how many it swapped.
 local function SwapPhrases(s, list, saved, glue)
@@ -189,13 +216,13 @@ local function SwapPhrases(s, list, saved, glue)
 end
 
 function ns.Encode(key, line, glue, drift)
-    local t = Speaking(key)
+    local t = Tongue(key)
     local s, saved = Protect(line)
     local protected = #saved
     s = SwapPhrases(s, t.toNative, saved, glue)
     s = MapWords(s, function(w)
         local case = Case(w)
-        local nat = case ~= "mixed" and t.words[w:lower()]
+        local nat = case ~= "mixed" and ToNative(key, w:lower())
         return nat and ApplyCase(nat, case) or ns.Cipher(t, w)
     end)
     if drift then
@@ -213,7 +240,7 @@ local function DecodeProtected(t, s, saved)
     s = MapWords(s, function(w)
         n = n + 1
         local case = Case(w)
-        local en = case ~= "mixed" and t.natives[w:lower()]
+        local en = case ~= "mixed" and ToEnglish(t.key, w:lower())
         if en then return ApplyCase(en, case) end
         return ns.Decipher(t, w)
     end)
