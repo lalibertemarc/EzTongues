@@ -595,6 +595,10 @@ check(Channel() == "Say:" and editBox.text == "hold that", "unused /w dropped on
 Type("/w ")
 editBox.scripts.OnTabPressed(editBox)
 check(Channel() == "Tell Jaina Proudmoore:" and editBox.text == "", "unused /w dropped on Tab: " .. editBox.text)
+-- Another addon (EzAcquaintances' book) switches the box to a whisper.
+Type("/s ")
+EzTonguesAPI.Whisper("Fay Moss")
+check(Channel() == "Tell Fay Moss:", "EzTonguesAPI.Whisper: " .. Channel())
 
 -- Dialects end to end: add one, speak it, hear it; speak plain, still hear it; forget it.
 local GOLD = "|cffe6c35c"

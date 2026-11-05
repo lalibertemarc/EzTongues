@@ -479,6 +479,24 @@ local function OpenBox()
 end
 ns.OpenBox = OpenBox
 
+-- Other addons (EzAcquaintances' book): the box on a whisper to name ("First Surname"), open or not. The box stays on
+-- them, as if picked from the list.
+function ns.OpenWhisper(name)
+    whisperTo, channel = name, "WHISPER"
+    if box and box:IsShown() then
+        SetChannel("WHISPER", name)
+        edit:SetFocus()
+    else
+        OpenBox()
+    end
+    DropWhisperCommand()
+end
+
+-- For other addons: EzTonguesAPI.Whisper("First Surname") opens the box on a whisper to them.
+EzTonguesAPI = {
+    Whisper = function(name) ns.OpenWhisper(name) end,
+}
+
 function ns.ResetBox()
     EzTonguesDB.box = nil
     if box then PlaceBox(box) end

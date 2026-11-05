@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Whisper from EzAcquaintances.** Its book's Whisper button can open this box already on a whisper to that person (right-click the button and pick "In a tongue").
 - **Long lines no longer get stuck.** The game lets an addon say only one message per key press in say, yell, emotes and channels, so the second piece of a line too long for one message was blocked ("tried to call the protected function"). Now the first piece goes out and the box opens with the rest waiting: press Enter for each (or `/tongue more`), Escape drops them. Party, raid, guild, officer and whispers still get every piece at once.
 - **Speak your race's language.** `/tongue <lang> <text>` (or `/lang`) says your line in Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali, Gutterspeak, Demonic, Draconic or Titan. Anyone with EzTongues whose character knows it sees the translation after the line; everyone else hears the tongue (and, if they like, its name).
 - **Any channel.** `y`, `p`, `g`, `o`, `r` and `e` after the language yell, party, guild, officer, raid or emote it (an emote's "quoted speech" only); `w <name>` whispers it (the first name of your target, someone you whispered with or someone in your group fills in their surname). `/tongue default <lang>` lets you skip the language.

@@ -4,6 +4,7 @@ self = false
 exclude_files = { "tests/", "tools/" }
 
 globals = {
+    "EzTonguesAPI",
     "EzTonguesDB",
     "EzTonguesCharDB",
     "EzTongues_ToggleBox",
