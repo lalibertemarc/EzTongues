@@ -1,5 +1,9 @@
 # EzTongues
 
+## v1.0.0-beta.2
+
+- **Much lighter.** Uses about 2 MB less memory once chat is heard: words are looked up in the dictionary as needed instead of being copied into big tables for every language.
+
 ## v1.0.0-beta.1
 
 - **Whisper from EzAcquaintances.** Its book's Whisper button can open this box already on a whisper to that person (right-click the button and pick "In a tongue").
