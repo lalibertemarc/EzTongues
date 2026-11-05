@@ -180,6 +180,10 @@ ns.ALIASES = {
 ns.SHORT_CHANNELS = { s = "SAY", y = "YELL", p = "PARTY", g = "GUILD", o = "OFFICER", r = "RAID", e = "EMOTE",
                       w = "WHISPER" }
 
+-- Channels where Forever lets a key press say only one message (a second one in the same press is blocked): a line
+-- cut in pieces sends one piece per press there. Elsewhere every piece goes at once.
+ns.ONE_PER_PRESS = { SAY = true, YELL = true, EMOTE = true, CHANNEL = true }
+
 -- In the box, a line can start like a chat command: /y Hello!
 ns.BOX_CHANNELS = {
     s = "SAY", say = "SAY", y = "YELL", yell = "YELL", p = "PARTY", party = "PARTY", g = "GUILD", guild = "GUILD",

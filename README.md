@@ -21,6 +21,7 @@ Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali,
 | `/tongue <lang> y\|p\|g\|o\|r\|e <text>` | Yell, party, guild, officer, raid or emote it (in an emote with "quoted speech", only the quotes are in the language); `/tongue <lang> s <text>` says a line starting with one of those letters |
 | `/tongue <lang> w <name> <text>` | Whisper it: `"First Surname"`, `%t`, or just the first name of your target, someone you whispered with lately or someone in your group (their surname is filled in) |
 | `/tongue <text>` | Your default language; `/tongue default <lang>` sets it |
+| `/tongue more` | Say the next piece of a line too long for one message |
 | `/tongue test [lang] <text>` | Print it in the language and back, send nothing |
 | `/tongue list` | Every language, and which you know |
 | `/tongue learn\|forget <lang\|all>` | What this character speaks |
@@ -38,7 +39,7 @@ Languages: Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali,
 
 In an emote, the tag goes right before each "quote": `smiles. [Orcish] "Throm-ka!"`. Long lines carry it on every piece.
 
-Chat links, raid marks like `{skull}`, numbers and punctuation come through untouched, capitals are kept (Capitalized, ALL CAPS), `%t` becomes your target's name before the line is turned into the language, and long lines are split at the 255-character chat limit.
+Chat links, raid marks like `{skull}`, numbers and punctuation come through untouched, capitals are kept (Capitalized, ALL CAPS), `%t` becomes your target's name before the line is turned into the language, and long lines are split at the 255-character chat limit. In say, yell, emotes and channels the game allows one message per key press, so only the first piece goes at once: the box opens with the rest waiting, Enter says each one (or `/tongue more`), Escape drops them.
 
 ## Dialects
 

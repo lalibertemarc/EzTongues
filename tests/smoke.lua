@@ -382,11 +382,43 @@ sent = {}
 slash("orc Look at %t over there")
 check(sent[1] and Said(sent[1].msg) == "Look at Jaina over there", "%t filled in before encoding")
 
--- Long lines go out in pieces of 255 bytes or less.
+-- Long lines go out in pieces of 255 bytes or less. In /say only one per press (Forever blocks a second send in the
+-- same press): the rest wait for /tongue more, or Enter on an empty line in the box (it opens for them).
+local long = string.rep("Victory or death, my friends, we march to the gates of the city tonight! ", 8)
 sent = {}
-slash("orcish " .. string.rep("Victory or death, my friends, we march to the gates of the city tonight! ", 8))
-check(#sent >= 3, "long line split")
-for _, m in ipairs(sent) do check(#m.msg <= 255 and Said(m.msg), "piece ok, with its tag: " .. m.msg) end
+slash("orcish " .. long)
+local waits = ns.Waiting()
+check(#sent == 1 and waits >= 2, "a long /say line sends one piece, the rest wait: " .. waits)
+local pieces = { sent[1] }
+sent = {}
+slash("more")
+check(#sent == 1 and ns.Waiting() == waits - 1, "/tongue more says the next piece")
+pieces[#pieces + 1] = sent[1]
+local boxEdit
+for _, f in ipairs(frames) do if f.name == "EzTonguesBoxEdit" then boxEdit = f end end
+check(boxEdit ~= nil, "pieces waiting open the box")
+while boxEdit and ns.Waiting() > 0 do
+    sent = {}
+    boxEdit.scripts.OnEnterPressed(boxEdit)
+    check(#sent == 1, "Enter on an empty box line says the next piece")
+    pieces[#pieces + 1] = sent[1]
+end
+check(#pieces == waits + 1, "every piece said")
+for _, m in ipairs(pieces) do check(m and #m.msg <= 255 and Said(m.msg), "piece ok, with its tag: " .. m.msg) end
+sent = {}
+slash("more")
+check(#sent == 0, "nothing more waits")
+-- Party isn't held to one per press: every piece at once.
+sent = {}
+slash("orcish p " .. long)
+check(#sent == waits + 1 and ns.Waiting() == 0, "party sends every piece at once: " .. #sent)
+-- A new line, or Escape in the box, drops what waits.
+slash("orcish " .. long)
+slash("orcish Hello")
+check(ns.Waiting() == 0, "a new line drops the waiting pieces")
+slash("orcish " .. long)
+if boxEdit then boxEdit.scripts.OnEscapePressed(boxEdit) end
+check(ns.Waiting() == 0, "Escape drops the waiting pieces")
 
 -- Tags off: the line goes out bare and still decodes.
 EzTonguesDB.tag = false

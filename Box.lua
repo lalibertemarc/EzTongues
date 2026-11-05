@@ -2,8 +2,9 @@
 -- language (it's also your default) or one of its dialects. The channel shows at the start of the line ("Say:", "Tell Bob Smith:"); start
 -- a line the way chat does to switch it (/y, /p, /e ... or /w name, then a space), click it for a list of channels
 -- and people to whisper, or press Tab to whisper the next person the box knows (your target, people you whispered
--- with, your group). Enter says the line, Escape closes the box, Up/Down go through this session's lines. A click
--- outside it lets go of the keyboard (so you can move) and leaves it open; a click on it, or its key, takes the
+-- with, your group). Enter says the line, Escape closes the box, Up/Down go through this session's lines. A line
+-- too long for one message leaves pieces waiting (ns.Waiting): the box stays open and each Enter on an empty line
+-- says the next one; Escape drops them. A click outside it lets go of the keyboard (so you can move) and leaves it open; a click on it, or its key, takes the
 -- keyboard back.
 local _, ns = ...
 
@@ -138,7 +139,10 @@ local function ChatColor(chatType)
 end
 
 local function UpdateHint()
-    if edit:HasFocus() then
+    local waiting = ns.Waiting()
+    if waiting > 0 then
+        hint:SetText(("Enter: say the next piece (%d)  Esc: drop"):format(waiting))
+    elseif edit:HasFocus() then
         hint:SetText(channel == "WHISPER" and "Tab: next name  Esc: close" or "Tab: whisper  /y /p /w name: switch")
     else
         hint:SetText("Click here to type")
@@ -335,18 +339,32 @@ local function Remember(text)
     if #history > 20 then table.remove(history, 1) end
 end
 
-local function Send()
-    local text = edit:GetText() .. (held or "")
-    skipWord, held = nil, nil
-    edit:SetText("")
-    box:Hide()
-    if Trim(text) == "" then return end
+local function Say(text)
     Remember(text)
     -- A line that still starts with a command ("/y" and Enter, "/w bob" without a line yet) goes the slash way.
     local cmd, rest = Trim(text):match("^/(%S+)%s*(.*)$")
     local chatType = cmd and ns.BOX_CHANNELS[cmd:lower()]
     if chatType then return ns.SayTo(ns.Default(), chatType, rest) end
     ns.Say(ns.Default(), text, channel, channel == "WHISPER" and whisperTo or nil)
+end
+
+-- Enter: the line, or (on an empty line) the next piece waiting. The box stays open while pieces wait.
+local function Send()
+    local text = edit:GetText() .. (held or "")
+    skipWord, held = nil, nil
+    edit:SetText("")
+    if Trim(text) ~= "" then
+        Say(text)
+    elseif not ns.SendNext() then
+        return box:Hide()
+    end
+    if ns.Waiting() > 0 then UpdateHint() else box:Hide() end
+end
+
+-- Escape and the ×: close, dropping the pieces still waiting.
+local function Close()
+    ns.DropWaiting()
+    box:Hide()
 end
 
 ---------------------------------------------------------------------------
@@ -383,7 +401,7 @@ local function MakeBox()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetSize(22, 22)
     close:SetPoint("TOPRIGHT", 1, 1)
-    close:SetScript("OnClick", function() f:Hide() end)
+    close:SetScript("OnClick", Close)
 
     -- The language: a dropdown.
     local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -409,7 +427,7 @@ local function MakeBox()
     e:SetAutoFocus(false)
     e:SetMaxLetters(MAX)
     e:SetScript("OnEnterPressed", Send)
-    e:SetScript("OnEscapePressed", function() f:Hide() end)
+    e:SetScript("OnEscapePressed", Close)
     e:SetScript("OnTextChanged", function(self, userInput)
         if userInput then SwitchFromText(self) end
     end)
