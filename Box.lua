@@ -495,6 +495,20 @@ end
 -- For other addons: EzTonguesAPI.Whisper("First Surname") opens the box on a whisper to them.
 EzTonguesAPI = {
     Whisper = function(name) ns.OpenWhisper(name) end,
+    -- EzLines: { { key, label, known }, ... } in EzTongues' order.
+    Tongues = function()
+        local out = {}
+        for _, t in ipairs(ns.TONGUES) do out[#out + 1] = { key = t.key, label = t.label, known = ns.Knows(t.key) } end
+        return out
+    end,
+    -- EzLines: the messages for text in tongue key (tagged, %t filled in, only the "quoted" parts of an emote), none
+    -- past 255 bytes; nil and why when this character doesn't speak it. Sends nothing.
+    Lines = function(key, text, chatType)
+        key = ns.ResolveTongue(key)
+        if not key then return nil, "unknown tongue" end
+        if not ns.Knows(key) then return nil, "you don't speak " .. ns.Label(key) end
+        return ns.Lines(key, text, chatType)
+    end,
 }
 
 function ns.ResetBox()

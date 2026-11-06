@@ -244,6 +244,13 @@ local function Say(key, text, chatType, target)
     end
     if chatType == "WHISPER" and not target then return Print("Whisper whom? /tongue <lang> w <name> <text>") end
     if ChatLocked() then return Print("The game blocks addon chat right now.") end
+    SendPieces(ns.Lines(key, text, chatType), chatType, target)
+end
+ns.Say = Say
+
+-- The messages to send for text in tongue key (tagged, in your dialect of it if you speak one), none past 255
+-- bytes. EzTonguesAPI.Lines.
+function ns.Lines(key, text, chatType)
     text = ExpandTarget(text)
     -- "[Orcish] " first, as NPCs' lines in a language: everyone sees what's spoken, and it's on every piece. A
     -- dialect's lines are always tagged "[Orcish dialect] ": that's how they're told from plain ones.
@@ -260,9 +267,8 @@ local function Say(key, text, chatType, target)
     end
     local pieces = ns.Split(said, MAX - #prefix)
     for i, msg in ipairs(pieces) do pieces[i] = prefix .. msg end
-    SendPieces(pieces, chatType, target)
+    return pieces
 end
-ns.Say = Say
 
 -- rest of a /tongue <lang> <letter> line
 local function SayTo(key, chatType, rest)
