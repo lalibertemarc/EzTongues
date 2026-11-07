@@ -12,13 +12,16 @@ Your blood elf greets an old friend in Thalassian. Your orc barks orders in Orci
 
 **Thalassian, Darnassian, Dwarvish, Gnomish, Orcish, Taur-ahe, Zandali, Gutterspeak, Demonic, Draconic and Titan.**
 
+> **Not a translator for the game's languages, and not cross-faction.** EzTongues doesn't translate the game's own racial languages, and it can't read the other faction's chat. It's a roleplay language between players of the same faction who both run it. More below.
+
 The `[Orcish]` tag is how NPCs speak a language in the game, so even players without the addon know what they're hearing. Rather go without it? Switch it off on the options page.
 
-## Important: this is not a cross-faction translator
+## Important: not a translator for the game's languages, not cross-faction
 
-EzTongues **cannot** read what the other faction says, and it doesn't try to.
+EzTongues **does not translate the game's own languages**, and it **cannot** read what the other faction says. It doesn't try to.
 
-When a Horde player talks near you, the game server replaces every word with a random word from Blizzard's language lists before you get it. The original words are thrown away, so no addon can ever turn that back into English.
+- **The game's languages are separate.** Picking Orcish or Thalassian in the chat box's language menu is the game's own feature, and EzTongues has nothing to do with it. It doesn't translate those lines, and its own languages don't unlock or replace them.
+- **The other faction stays garbled.** When a Horde player talks near an Alliance player (or the other way around), the game server replaces every word with a random word from Blizzard's language lists before it reaches you. The original words are thrown away, so no addon can ever turn that back into English.
 
 EzTongues is something else: roleplay languages for players of the **same faction**. Your line goes out as ordinary chat already written in the language, and the addon on your friends' side reads it back. If someone of the other faction hears an EzTongues line, the server garbles it like any other line and they see no translation.
 
