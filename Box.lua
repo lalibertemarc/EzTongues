@@ -114,6 +114,7 @@ local function ToggleList(owner, items, width)
     end
     list:Show()
 end
+ns.ToggleList = ToggleList  -- the options page's Dialects subpage picks its tongue with it too
 
 ---------------------------------------------------------------------------
 -- Channel and whisper name

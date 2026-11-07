@@ -1,5 +1,9 @@
 # EzTongues
 
+## Unreleased
+
+- **A Dialects page.** Esc > Options > AddOns > EzTongues > Dialects (or "Manage" on the main page): pick the tongue, type a name and your group's passphrase, click Add. Every dialect you know is listed with its tongue and passphrase, a "Speak it" / "Speak plain" button and a Forget button (click twice). Hover a row to hear a sample line in it. The `/tongue dialect` commands still work.
+
 ## v1.0.0-beta.2
 
 - **Much lighter.** Uses about 2 MB less memory once chat is heard: words are looked up in the dictionary as needed instead of being copied into big tables for every language.

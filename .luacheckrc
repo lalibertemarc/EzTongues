@@ -18,7 +18,7 @@ globals = {
 
 read_globals = {
     -- Frames & UI
-    "CreateFrame", "UIParent", "DEFAULT_CHAT_FRAME", "ChatFontNormal",
+    "CreateFrame", "UIParent", "DEFAULT_CHAT_FRAME", "ChatFontNormal", "GameTooltip",
     -- Settings panel
     "Settings", "CreateSettingsListSectionHeaderInitializer", "CreateSettingsButtonInitializer",
     -- Chat filters (ChatFrameUtil on newer clients)

@@ -47,6 +47,7 @@ function CreateFrame(_, name)
     return f
 end
 UIParent = Stub("UIParent")
+GameTooltip = Stub("GameTooltip")
 ChatFontNormal = {}
 DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) printed[#printed + 1] = m end }
 ChatFrameUtil = { AddMessageEventFilter = function(event, fn) filters[event] = fn end }
@@ -97,6 +98,8 @@ Settings = {
         return { Add = function(_, k) data[#data + 1] = k end, GetData = function() return data end }
     end,
     RegisterAddOnCategory = function() end,
+    RegisterCanvasLayoutSubcategory = function() return { GetID = function() return 2 end } end,
+    OpenToCategory = function() end,
     VarType = { Boolean = "boolean", String = "string" },
 }
 function CreateSettingsListSectionHeaderInitializer() end
@@ -544,9 +547,11 @@ check(editBox.text == "Hello?" and Channel() == "Tell Jaina Proudmoore:", "histo
 check(Enter().chatType == "WHISPER", "history line keeps its channel")
 
 -- The dropdowns: language, then the channel list (a click on the channel).
-local buttons = {}  -- the box's close button, then the language button
+local buttons = {}  -- the box's close button, then the language button (the options page's come before the box)
+local inBox = false
 for _, f in ipairs(frames) do
-    if f.scripts.OnClick and not rawget(f, "name") then buttons[#buttons + 1] = f end
+    inBox = inBox or rawget(f, "name") == "EzTonguesBox"
+    if inBox and f.scripts.OnClick and not rawget(f, "name") then buttons[#buttons + 1] = f end
 end
 Open()
 buttons[2].scripts.OnClick(buttons[2])
@@ -665,6 +670,49 @@ check(#EzTonguesCharDB.dialects == 1 and select(2, filter(nil, "CHAT_MSG_SAY", d
     "forgotten dialect no longer read")
 slash("dialect use bloodfang")
 slash("dialect")
+
+-- The options page's Dialects subpage: add (refusals shown in its status line), speak, plain, two-click forget.
+local page = ns.dialectsPanel
+local ui = page.ui
+local function Click(b) b.scripts.OnClick(b) end
+page:Show()
+check(ui.rows[1] and ui.rows[1].shown and ui.rows[1].dialect.name == "Ironjaw", "page lists the dialect left")
+check(ui.tongue.text == "Orcish", "page's tongue starts on the default: " .. ui.tongue.text)
+ui.name.text, ui.pass.text = "Wolfpack", "abc"
+Click(ui.add)
+check(#EzTonguesCharDB.dialects == 1 and ui.status.text:find("too short", 1, true), "page refuses a short passphrase")
+Click(ui.tongue)
+local dwarfAt
+for i, t in ipairs(ns.TONGUES) do if t.key == "dwarvish" then dwarfAt = i end end
+Click(list.rows[dwarfAt])
+check(ui.tongue.text == "Dwarvish", "page picks a tongue: " .. ui.tongue.text)
+ui.name.text, ui.pass.text = "Deepforge", "  Stone and  Ale "
+ui.pass.scripts.OnEnterPressed(ui.pass)
+local added = EzTonguesCharDB.dialects[2]
+check(added and added.lang == "dwarvish" and added.name == "Deepforge" and EzTonguesCharDB.speak.dwarvish == "deepforge",
+    "page adds a dialect and speaks it")
+check(ui.name.text == "" and ui.pass.text == "" and ui.status.text:find("Added Deepforge", 1, true), "page clears its form")
+check(ui.status.text:find("don't know Dwarvish", 1, true) ~= nil, "page warns about an unknown tongue")
+-- Rows follow ns.TONGUES order: Dwarvish before Orcish.
+local dwarfRow, orcRow = ui.rows[1], ui.rows[2]
+check(dwarfRow.dialect.name == "Deepforge" and orcRow.dialect.name == "Ironjaw", "page rows in tongue order")
+check(dwarfRow.speak.text == "Speak plain" and orcRow.speak.text == "Speak it", "page shows who's spoken")
+Click(orcRow.speak)
+check(EzTonguesCharDB.speak.orcish == "ironjaw" and orcRow.speak.text == "Speak plain", "page's Speak it")
+Click(orcRow.speak)
+check(EzTonguesCharDB.speak.orcish == nil and orcRow.speak.text == "Speak it", "page's Speak plain")
+orcRow.scripts.OnEnter(orcRow)
+Click(orcRow.forget)
+check(#EzTonguesCharDB.dialects == 2, "Forget needs a second click")
+orcRow.forget.scripts.OnLeave(orcRow.forget)
+Click(orcRow.forget)
+check(#EzTonguesCharDB.dialects == 2, "leaving Forget disarms it")
+Click(orcRow.forget)
+check(#EzTonguesCharDB.dialects == 1 and EzTonguesCharDB.dialects[1].name == "Deepforge", "page forgets a dialect")
+check(not ui.rows[2].shown, "page drops the forgotten row")
+slash("dialect add orcish Ironjaw iron and blood")
+check(ui.rows[2].shown and ui.rows[2].dialect.name == "Ironjaw", "a slash add shows on the open page")
+page:Hide()
 
 printed = {}
 slash("test darnassian Elune be with you, Tyrande.")

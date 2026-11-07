@@ -115,19 +115,77 @@ function ns.SetSpokenDialect(key, name)
 end
 
 ---------------------------------------------------------------------------
--- /tongue dialect
+-- Changing them: shared by /tongue dialect and the options page's Dialects subpage. Each returns what it did, or
+-- nil and why not, and prints nothing.
 ---------------------------------------------------------------------------
-local Print = function(msg) ns.Print(msg) end
-
 local function Changed()
     ns.ForgetHeard()
     if ns.RefreshBox then ns.RefreshBox() end
+    if ns.RefreshDialectsPage then ns.RefreshDialectsPage() end
 end
 
-local function Sample(d)
-    local text = ns.Encode(d.lang, ns.SAMPLE, nil, DriftOf(d))
-    DEFAULT_CHAT_FRAME:AddMessage("  |cffa0a0a0" .. ns.Tag(d.lang, true) .. text .. "|r")
+-- ns.SAMPLE as it sounds in a dialect, tag first: "[Orcish dialect] ...".
+function ns.DialectSample(d)
+    return ns.Tag(d.lang, true) .. ns.Encode(d.lang, ns.SAMPLE, nil, DriftOf(d))
 end
+
+-- Adds a dialect of tongue key and speaks it from then on -> the dialect, or nil and why not.
+function ns.AddDialect(key, name, pass)
+    name, pass = ns.Trim(name or ""), ns.Trim(pass or "")
+    key = ns.ResolveTongue(key)
+    if not key then return nil, "Pick a tongue first." end
+    if not name:find("^[%a][%a'%-]*$") or #name > 24 then
+        return nil, "A dialect's name is one word of letters (an ' or - inside is fine), 24 at most."
+    end
+    if #NormalizePass(pass) < 4 then return nil, "That passphrase is too short: 4 letters at least, a few words is better." end
+    local known = Find(name)
+    if known then return nil, ("You already know a dialect called %s."):format(known.name) end
+    for _, d in ipairs(EzTonguesCharDB.dialects) do
+        if d.lang == key and NormalizePass(d.pass) == NormalizePass(pass) then
+            return nil, ("That's %s, which you already know."):format(d.name)
+        end
+    end
+    local d = { name = name, lang = key, pass = pass }
+    table.insert(EzTonguesCharDB.dialects, d)
+    ns.SetSpokenDialect(key, name)
+    Changed()
+    return d
+end
+
+-- Neither speaks nor reads it any more -> the dialect forgotten, or nil.
+function ns.ForgetDialect(name)
+    local d, i = Find(name)
+    if not d then return end
+    table.remove(EzTonguesCharDB.dialects, i)
+    if EzTonguesCharDB.speak[d.lang] == d.name:lower() then ns.SetSpokenDialect(d.lang, nil) end
+    Changed()
+    return d
+end
+
+-- Speaks its tongue in the named dialect -> the dialect, or nil.
+function ns.UseDialect(name)
+    local d = Find(name)
+    if not d then return end
+    ns.SetSpokenDialect(d.lang, d.name)
+    Changed()
+    return d
+end
+
+-- Speaks tongue key plain again (nil: every tongue). Its dialects are still read.
+function ns.PlainDialect(key)
+    if key then ns.SetSpokenDialect(key, nil) else wipe(EzTonguesCharDB.speak) end
+    Changed()
+end
+
+-- Whether this character speaks d's tongue in d.
+function ns.SpeaksDialect(d)
+    return EzTonguesCharDB.speak[d.lang] == d.name:lower()
+end
+
+---------------------------------------------------------------------------
+-- /tongue dialect
+---------------------------------------------------------------------------
+local Print = function(msg) ns.Print(msg) end
 
 local function List()
     local all = EzTonguesCharDB.dialects
@@ -139,9 +197,8 @@ local function List()
     for _, t in ipairs(ns.TONGUES) do
         for _, d in ipairs(all) do
             if d.lang == t.key then
-                local spoken = EzTonguesCharDB.speak[d.lang] == d.name:lower()
                 DEFAULT_CHAT_FRAME:AddMessage(("  %s%s|r - %s, passphrase |cffa0a0a0\"%s\"|r"):format(
-                    spoken and "|cff40ff40" or "|cffd8d8d8", d.name, t.label, d.pass))
+                    ns.SpeaksDialect(d) and "|cff40ff40" or "|cffd8d8d8", d.name, t.label, d.pass))
             end
         end
     end
@@ -153,54 +210,32 @@ local function Add(arg)
     if not key then
         return Print("/tongue dialect add <lang> <Name> <passphrase>, e.g. /tongue dialect add orcish Bloodfang wolves of the north")
     end
-    if not name:find("^[%a][%a'%-]*$") or #name > 24 then
-        return Print("A dialect's name is one word of letters (an ' or - inside is fine), 24 at most.")
-    end
-    pass = ns.Trim(pass)
-    if #NormalizePass(pass) < 4 then return Print("That passphrase is too short: 4 letters at least, a few words is better.") end
-    if Find(name) then return Print(("You already know a dialect called %s. /tongue dialect forget %s first."):format(name, name)) end
-    for _, d in ipairs(EzTonguesCharDB.dialects) do
-        if d.lang == key and NormalizePass(d.pass) == NormalizePass(pass) then
-            return Print(("That's %s, which you already know."):format(d.name))
-        end
-    end
-    local d = { name = name, lang = key, pass = pass }
-    table.insert(EzTonguesCharDB.dialects, d)
-    ns.SetSpokenDialect(key, name)
-    Changed()
+    local d, why = ns.AddDialect(key, name, pass)
+    if not d then return Print(why) end
     Print(("You speak %s as %s now (/tongue dialect plain %s to speak it plain again):"):format(ns.Label(key), name, key))
-    Sample(d)
+    DEFAULT_CHAT_FRAME:AddMessage("  |cffa0a0a0" .. ns.DialectSample(d) .. "|r")
     if not ns.Knows(key) then Print(("You don't speak %s yet: /tongue learn %s"):format(ns.Label(key), key)) end
 end
 
 local function Forget(arg)
-    local d, i = Find(ns.Trim(arg))
+    local d = ns.ForgetDialect(ns.Trim(arg))
     if not d then return Print("/tongue dialect forget <name>: the name of a dialect you know (/tongue dialect lists them).") end
-    table.remove(EzTonguesCharDB.dialects, i)
-    if EzTonguesCharDB.speak[d.lang] == d.name:lower() then ns.SetSpokenDialect(d.lang, nil) end
-    Changed()
     Print(("You've forgotten %s: you no longer speak or read it."):format(d.name))
 end
 
 local function Use(arg)
-    local d = Find(ns.Trim(arg))
+    local d = ns.UseDialect(ns.Trim(arg))
     if not d then return Print("/tongue dialect use <name>: the name of a dialect you know (/tongue dialect lists them).") end
-    ns.SetSpokenDialect(d.lang, d.name)
-    Changed()
     Print(("You speak %s as %s now."):format(ns.Label(d.lang), d.name))
 end
 
 local function Plain(arg)
     arg = ns.Trim(arg):lower()
     local key = ns.ResolveTongue(arg)
-    if arg == "all" then
-        wipe(EzTonguesCharDB.speak)
-    elseif key then
-        ns.SetSpokenDialect(key, nil)
-    else
+    if arg ~= "all" and not key then
         return Print("/tongue dialect plain <lang|all>: speak a tongue plain again (you still read its dialects).")
     end
-    Changed()
+    ns.PlainDialect(key)
     Print(key and ("You speak %s plain now."):format(ns.Label(key)) or "You speak every tongue plain now.")
 end
 
