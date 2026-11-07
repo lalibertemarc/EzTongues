@@ -6,6 +6,7 @@
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 ## SavedVariables: EzTonguesDB
 ## SavedVariablesPerCharacter: EzTonguesCharDB
+## X-Curse-Project-ID: 1790171
 
 Data.lua
 Dictionary.lua
