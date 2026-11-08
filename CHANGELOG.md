@@ -1,8 +1,8 @@
 # EzTongues
 
-## Unreleased
+## v1.0.2
 
-- **Fixed, for real this time:** a key that opens the box, its keybind or an action bar macro running `C:/Program Files/Git/tongue box`, no longer types its letter into it.
+- **Fixed:** a key that opens the box, its keybind or an action bar macro running `/tongue box`, no longer types its letter into it.
 
 ## v1.0.1
 
