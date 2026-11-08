@@ -469,7 +469,7 @@ local COMMANDS = {
     end,
     dialect = function(arg) ns.DialectCommand(arg) end,
     dialects = function(arg) ns.DialectCommand(arg) end,
-    box = function() ns.OpenBox() end,
+    box = function() ns.FocusBox() end,
     config = OpenSettings,
 }
 

@@ -476,11 +476,41 @@ local function MakeBox()
     return f
 end
 
+-- A key that opens the box (its keybind, or a macro running /<cmd> box on an action bar key) still types its own letter
+-- into it: a macro runs on key down and the letter lands in that same frame (key log, 2026-11-08: "=" from an action
+-- bar macro), and even the runOnUp keybind isn't safe. Blizzard's chat box sets its text again on its next OnUpdate
+-- for the same reason. Here: the first letter that turns up within KEY_FRAMES frames is taken back out, whatever key.
+local function GuardKey()
+    keyGuard = keyGuard or CreateFrame("Frame")
+    local before, frames = edit:GetText(), 0
+    keyGuard:SetScript("OnUpdate", function(self)
+        frames = frames + 1
+        local text = edit:GetText()
+        if text ~= before then
+            local pos, n = edit:GetCursorPosition(), #text - #before
+            if n >= 1 and n <= 4 and pos >= n and text:sub(1, pos - n) .. text:sub(pos + 1) == before then
+                edit:SetText(before)
+                edit:SetCursorPosition(pos - n)
+            end
+            frames = KEY_FRAMES
+        end
+        if frames >= KEY_FRAMES then self:SetScript("OnUpdate", nil) end
+    end)
+end
+
 local function OpenBox()
     box = box or MakeBox()
     box:Show()
+    GuardKey()
 end
 ns.OpenBox = OpenBox
+
+-- The slash's box command (often a macro on a key): opens the box, or gives an open one the keyboard back.
+function ns.FocusBox()
+    if not (box and box:IsShown()) then return OpenBox() end
+    edit:SetFocus()
+    GuardKey()
+end
 
 -- Other addons (EzAcquaintances' book): the box on a whisper to name ("First Surname"), open or not. The box stays on
 -- them, as if picked from the list.
@@ -520,36 +550,10 @@ function ns.ResetBox()
     ns.Print("Box moved back to its first spot.")
 end
 
--- The key's own letter still lands in the box a frame or so after the key gave it the keyboard, even on key release
--- (in-game, 2026-11-08); Blizzard's chat box sets its text again on its next OnUpdate for the same reason. Here: the
--- first letter that turns up within KEY_FRAMES frames is taken back out, whatever key is bound (NUMPAD1 types "1").
-local function GuardKey()
-    keyGuard = keyGuard or CreateFrame("Frame")
-    local before, frames = edit:GetText(), 0
-    keyGuard:SetScript("OnUpdate", function(self)
-        frames = frames + 1
-        local text = edit:GetText()
-        if text ~= before then
-            local pos, n = edit:GetCursorPosition(), #text - #before
-            if n >= 1 and n <= 4 and pos >= n and text:sub(1, pos - n) .. text:sub(pos + 1) == before then
-                edit:SetText(before)
-                edit:SetCursorPosition(pos - n)
-            end
-            frames = KEY_FRAMES
-        end
-        if frames >= KEY_FRAMES then self:SetScript("OnUpdate", nil) end
-    end)
-end
-
--- Bindings.xml (runOnUp): opens on key release; GuardKey takes out the key's letter if it lands anyway. While the box
--- is open but let go of, the key takes the keyboard back instead of closing it.
+-- Bindings.xml (runOnUp): opens on key release. While the box is open but let go of, the key takes the keyboard back
+-- instead of closing it.
 function EzTongues_ToggleBox(keystate)
     if keystate ~= "up" then return end
-    if box and box:IsShown() then
-        if edit:HasFocus() then box:Hide() return end
-        edit:SetFocus()
-    else
-        OpenBox()
-    end
-    GuardKey()
+    if box and box:IsShown() and edit:HasFocus() then return box:Hide() end
+    ns.FocusBox()
 end

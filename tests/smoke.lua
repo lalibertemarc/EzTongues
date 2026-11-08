@@ -591,6 +591,13 @@ check(not Guard(), "guard stops after a few frames")
 Land("y")
 check(editBox.text == "y", "a letter typed later stays")
 editBox.text = ""
+-- A macro running "/… box" on an action bar key: the letter lands in the same frame (key log: "=").
+editBox.focus = false
+slash("box")
+Land("=")
+Frames(1)
+check(editBox.text == "", "the macro key's letter taken out")
+check(editBox.focus, "box command gives the box the keyboard")
 
 -- The dropdowns: language, then the channel list (a click on the channel).
 local buttons = {}  -- the box's close button, then the language button (the options page's come before the box)

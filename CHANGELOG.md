@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Fixed, for real this time:** the box's keybind letter no longer lands in the box, whichever key you bind.
+- **Fixed, for real this time:** a key that opens the box, its keybind or an action bar macro running `C:/Program Files/Git/tongue box`, no longer types its letter into it.
 
 ## v1.0.1
 
