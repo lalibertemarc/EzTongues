@@ -16,18 +16,8 @@ local channel, whisperTo = "SAY", nil  -- the box's channel (and whom it whisper
 local skipWord  -- after "/w bob " filled in Bob's surname: the surname, skipped if typed next
 local held      -- the line you had when you picked "Whisper..." from the list: it comes back once the name is in
 local history, historyAt = {}, 0
-local keyOpened  -- GetTime() when the keybind gave the box the keyboard: its own letter may still land (see OnChar)
-local KEY_SLACK = 0.2  -- seconds after that a typed letter matching the key is dropped
-
--- Is char what a key bound to EZTONGUES_BOX types? "SHIFT-T" → t/T, "CTRL--" → "-", "SPACE" → " "; a Shift key
--- types a letter we can't guess, so anything counts.
-local function KeyLetter(char)
-    for _, key in ipairs({ GetBindingKey("EZTONGUES_BOX") }) do
-        local base = key:match("^.*%-(.+)$") or key
-        if base == "SPACE" then base = " " end
-        if key:find("SHIFT%-") or base:lower() == char:lower() then return true end
-    end
-end
+local keyGuard  -- frame whose OnUpdate takes the keybind's own letter back out (see GuardKey)
+local KEY_FRAMES = 3  -- frames after the key gave the box the keyboard in which a letter counts as the key's
 
 local Trim = ns.Trim
 
@@ -444,17 +434,6 @@ local function MakeBox()
     e:SetScript("OnTextChanged", function(self, userInput)
         if userInput then SwitchFromText(self) end
     end)
-    -- runOnUp alone didn't keep the bound key's letter out (in-game, 2026-11-08): the first letter typed right after
-    -- the key opened the box is taken out again when it is that key's (any letter for a Shift key: "!" for Shift-1).
-    e:SetScript("OnChar", function(self, char)
-        local at = keyOpened
-        keyOpened = nil
-        if not at or GetTime() - at > KEY_SLACK or not KeyLetter(char) then return end
-        local text, pos = self:GetText(), self:GetCursorPosition()
-        if text:sub(pos - #char + 1, pos) ~= char then return end
-        self:SetText(text:sub(1, pos - #char) .. text:sub(pos + 1))
-        self:SetCursorPosition(pos - #char)
-    end)
     e:SetScript("OnTabPressed", NextName)
     e:SetScript("OnArrowPressed", function(self, key)
         if #history == 0 or (key ~= "UP" and key ~= "DOWN") then return end
@@ -541,8 +520,29 @@ function ns.ResetBox()
     ns.Print("Box moved back to its first spot.")
 end
 
--- Bindings.xml (runOnUp): opens on key release, so the key's own letter never lands in the box. While the box is
--- open but let go of, the key takes the keyboard back instead of closing it.
+-- The key's own letter still lands in the box a frame or so after the key gave it the keyboard, even on key release
+-- (in-game, 2026-11-08); Blizzard's chat box sets its text again on its next OnUpdate for the same reason. Here: the
+-- first letter that turns up within KEY_FRAMES frames is taken back out, whatever key is bound (NUMPAD1 types "1").
+local function GuardKey()
+    keyGuard = keyGuard or CreateFrame("Frame")
+    local before, frames = edit:GetText(), 0
+    keyGuard:SetScript("OnUpdate", function(self)
+        frames = frames + 1
+        local text = edit:GetText()
+        if text ~= before then
+            local pos, n = edit:GetCursorPosition(), #text - #before
+            if n >= 1 and n <= 4 and pos >= n and text:sub(1, pos - n) .. text:sub(pos + 1) == before then
+                edit:SetText(before)
+                edit:SetCursorPosition(pos - n)
+            end
+            frames = KEY_FRAMES
+        end
+        if frames >= KEY_FRAMES then self:SetScript("OnUpdate", nil) end
+    end)
+end
+
+-- Bindings.xml (runOnUp): opens on key release; GuardKey takes out the key's letter if it lands anyway. While the box
+-- is open but let go of, the key takes the keyboard back instead of closing it.
 function EzTongues_ToggleBox(keystate)
     if keystate ~= "up" then return end
     if box and box:IsShown() then
@@ -551,5 +551,5 @@ function EzTongues_ToggleBox(keystate)
     else
         OpenBox()
     end
-    keyOpened = GetTime()
+    GuardKey()
 end

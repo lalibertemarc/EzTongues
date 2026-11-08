@@ -60,8 +60,6 @@ C_ChatInfo = {
 function issecretvalue() return false end
 local now = 1000
 function GetTime() return now end
-local boxKeys = { "SHIFT-T" }
-function GetBindingKey() return unpack(boxKeys) end
 local function UnitOf(unit)
     if unit == "player" then return player end
     if unit == "target" then return target end
@@ -552,36 +550,46 @@ editBox.scripts.OnArrowPressed(editBox, "UP")
 check(editBox.text == "Hello?" and Channel() == "Tell Jaina Proudmoore:", "history line back with its channel")
 check(Enter().chatType == "WHISPER", "history line keeps its channel")
 
--- The bound key's own letter, landing right after the key opened the box, is taken out; later letters stay.
-local function Char(c)
-    editBox.text = editBox.text .. c
-    editBox.cursor = nil
-    editBox.scripts.OnChar(editBox, c)
+-- The key's letter turning up within a few frames of the key opening the box is taken out; later letters stay.
+local function Guard()
+    for _, f in ipairs(frames) do if f.scripts.OnUpdate then return f end end
 end
+local function Land(c, at)
+    local e = editBox
+    e.text = e.text:sub(1, at or #e.text) .. c .. e.text:sub((at or #e.text) + 1)
+    e.cursor = (at or #e.text - #c) + #c
+end
+local function Frames(n)
+    for _ = 1, n do
+        local g = Guard()
+        if g then g.scripts.OnUpdate(g, 0.016) end
+    end
+end
+
 editBox.text = ""
-EzTongues_ToggleBox("up")  -- open and focused: closes
-EzTongues_ToggleBox("up")  -- opens again
-Char("T")
-check(editBox.text == "", "Shift key's letter dropped")
-Char("t")
+EzTongues_ToggleBox("up")
+Frames(1)
+Land("t")
+Frames(1)
+check(editBox.text == "", "the key's letter, a frame late, taken out")
+check(not Guard(), "guard stops once it took one")
+Land("t")
 check(editBox.text == "t", "the next letter stays")
-boxKeys = { "CTRL-T", "Y" }
-editBox.text = ""
 editBox.focus = false
+editBox.text = "hello"
+editBox.cursor = 2
 EzTongues_ToggleBox("up")  -- open but let go of: takes the keyboard back
-Char("x")
-check(editBox.text == "x", "another key's letter stays")
+Land("1", 2)
+Frames(1)
+check(editBox.text == "hello", "a letter at the cursor taken out too, any key")
+check(editBox.cursor == 2, "cursor back where it was")
+editBox.focus = false
 editBox.text = ""
-editBox.focus = false
 EzTongues_ToggleBox("up")
-Char("y")
-check(editBox.text == "", "the key's letter dropped, any case")
-editBox.focus = false
-EzTongues_ToggleBox("up")
-now = now + 1
-Char("y")
+Frames(3)
+check(not Guard(), "guard stops after a few frames")
+Land("y")
 check(editBox.text == "y", "a letter typed later stays")
-boxKeys = { "SHIFT-T" }
 editBox.text = ""
 
 -- The dropdowns: language, then the channel list (a click on the channel).

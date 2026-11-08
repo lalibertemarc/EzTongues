@@ -19,8 +19,6 @@ globals = {
 read_globals = {
     -- Frames & UI
     "CreateFrame", "UIParent", "DEFAULT_CHAT_FRAME", "ChatFontNormal", "GameTooltip",
-    -- Keybind letter guard (Box.lua)
-    "GetTime", "GetBindingKey",
     -- Settings panel
     "Settings", "CreateSettingsListSectionHeaderInitializer", "CreateSettingsButtonInitializer",
     -- Chat filters (ChatFrameUtil on newer clients)
