@@ -29,6 +29,8 @@ local function Stub(name)
         if k == "IsShown" then return function(self) return self.shown end end
         if k == "SetText" then return function(self, t) self.text = t end end
         if k == "GetText" then return function(self) return self.text end end
+        if k == "GetCursorPosition" then return function(self) return rawget(self, "cursor") or #self.text end end
+        if k == "SetCursorPosition" then return function(self, n) self.cursor = n end end
         if k == "CreateFontString" or k == "GetFontString" or k == "CreateTexture" then
             return function() return Stub("region") end
         end
@@ -56,6 +58,10 @@ C_ChatInfo = {
     InChatMessagingLockdown = function() return false end,
 }
 function issecretvalue() return false end
+local now = 1000
+function GetTime() return now end
+local boxKeys = { "SHIFT-T" }
+function GetBindingKey() return unpack(boxKeys) end
 local function UnitOf(unit)
     if unit == "player" then return player end
     if unit == "target" then return target end
@@ -545,6 +551,38 @@ Type("/s ")
 editBox.scripts.OnArrowPressed(editBox, "UP")
 check(editBox.text == "Hello?" and Channel() == "Tell Jaina Proudmoore:", "history line back with its channel")
 check(Enter().chatType == "WHISPER", "history line keeps its channel")
+
+-- The bound key's own letter, landing right after the key opened the box, is taken out; later letters stay.
+local function Char(c)
+    editBox.text = editBox.text .. c
+    editBox.cursor = nil
+    editBox.scripts.OnChar(editBox, c)
+end
+editBox.text = ""
+EzTongues_ToggleBox("up")  -- open and focused: closes
+EzTongues_ToggleBox("up")  -- opens again
+Char("T")
+check(editBox.text == "", "Shift key's letter dropped")
+Char("t")
+check(editBox.text == "t", "the next letter stays")
+boxKeys = { "CTRL-T", "Y" }
+editBox.text = ""
+editBox.focus = false
+EzTongues_ToggleBox("up")  -- open but let go of: takes the keyboard back
+Char("x")
+check(editBox.text == "x", "another key's letter stays")
+editBox.text = ""
+editBox.focus = false
+EzTongues_ToggleBox("up")
+Char("y")
+check(editBox.text == "", "the key's letter dropped, any case")
+editBox.focus = false
+EzTongues_ToggleBox("up")
+now = now + 1
+Char("y")
+check(editBox.text == "y", "a letter typed later stays")
+boxKeys = { "SHIFT-T" }
+editBox.text = ""
 
 -- The dropdowns: language, then the channel list (a click on the channel).
 local buttons = {}  -- the box's close button, then the language button (the options page's come before the box)

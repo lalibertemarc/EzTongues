@@ -1,5 +1,9 @@
 # EzTongues
 
+## Unreleased
+
+- **Fixed:** the box's keybind no longer types its own letter into the box when it opens it.
+
 ## v1.0.0
 
 First release on CurseForge.

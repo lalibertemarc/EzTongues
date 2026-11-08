@@ -16,6 +16,18 @@ local channel, whisperTo = "SAY", nil  -- the box's channel (and whom it whisper
 local skipWord  -- after "/w bob " filled in Bob's surname: the surname, skipped if typed next
 local held      -- the line you had when you picked "Whisper..." from the list: it comes back once the name is in
 local history, historyAt = {}, 0
+local keyOpened  -- GetTime() when the keybind gave the box the keyboard: its own letter may still land (see OnChar)
+local KEY_SLACK = 0.2  -- seconds after that a typed letter matching the key is dropped
+
+-- Is char what a key bound to EZTONGUES_BOX types? "SHIFT-T" → t/T, "CTRL--" → "-", "SPACE" → " "; a Shift key
+-- types a letter we can't guess, so anything counts.
+local function KeyLetter(char)
+    for _, key in ipairs({ GetBindingKey("EZTONGUES_BOX") }) do
+        local base = key:match("^.*%-(.+)$") or key
+        if base == "SPACE" then base = " " end
+        if key:find("SHIFT%-") or base:lower() == char:lower() then return true end
+    end
+end
 
 local Trim = ns.Trim
 
@@ -432,6 +444,17 @@ local function MakeBox()
     e:SetScript("OnTextChanged", function(self, userInput)
         if userInput then SwitchFromText(self) end
     end)
+    -- runOnUp alone didn't keep the bound key's letter out (in-game, 2026-11-08): the first letter typed right after
+    -- the key opened the box is taken out again when it is that key's (any letter for a Shift key: "!" for Shift-1).
+    e:SetScript("OnChar", function(self, char)
+        local at = keyOpened
+        keyOpened = nil
+        if not at or GetTime() - at > KEY_SLACK or not KeyLetter(char) then return end
+        local text, pos = self:GetText(), self:GetCursorPosition()
+        if text:sub(pos - #char + 1, pos) ~= char then return end
+        self:SetText(text:sub(1, pos - #char) .. text:sub(pos + 1))
+        self:SetCursorPosition(pos - #char)
+    end)
     e:SetScript("OnTabPressed", NextName)
     e:SetScript("OnArrowPressed", function(self, key)
         if #history == 0 or (key ~= "UP" and key ~= "DOWN") then return end
@@ -523,8 +546,10 @@ end
 function EzTongues_ToggleBox(keystate)
     if keystate ~= "up" then return end
     if box and box:IsShown() then
-        if edit:HasFocus() then box:Hide() else edit:SetFocus() end
+        if edit:HasFocus() then box:Hide() return end
+        edit:SetFocus()
     else
         OpenBox()
     end
+    keyOpened = GetTime()
 end
