@@ -496,6 +496,7 @@ ev:RegisterEvent("CHAT_MSG_WHISPER_INFORM")
 ev:SetScript("OnEvent", function(_, event, ...)
     if event ~= "PLAYER_LOGIN" then return Remember((select(2, ...))) end  -- text, author
     EzTonguesDB = EzTonguesDB or {}
+    EzTonguesDB.keyLog, EzTonguesDB.keyLogOn = nil, nil  -- left by a debug build's key log (2026-11-08)
     for k, v in pairs(ns.DEFAULTS) do
         if EzTonguesDB[k] == nil then EzTonguesDB[k] = v end
     end
