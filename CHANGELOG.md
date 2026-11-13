@@ -1,5 +1,9 @@
 # EzTongues
 
+## Unreleased
+
+- With EzCaret installed, the box tidies your line as you send it: common typos fixed, a capital at the start of sentences and a period at the end, before it is put into the language.
+
 ## v1.0.2
 
 - **Fixed:** a key that opens the box, its keybind or an action bar macro running `/tongue box`, no longer types its letter into it.

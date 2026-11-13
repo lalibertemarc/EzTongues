@@ -342,13 +342,19 @@ local function Remember(text)
     if #history > 20 then table.remove(history, 1) end
 end
 
+-- EzCaret, when loaded, tidies the line first: typos, capitals, an end period.
+local function Tidy(text, chatType)
+    if EzCaretAPI and EzCaretAPI.Polish then return EzCaretAPI.Polish(text, chatType) end
+    return text
+end
+
 local function Say(text)
     Remember(text)
     -- A line that still starts with a command ("/y" and Enter, "/w bob" without a line yet) goes the slash way.
     local cmd, rest = Trim(text):match("^/(%S+)%s*(.*)$")
     local chatType = cmd and ns.BOX_CHANNELS[cmd:lower()]
-    if chatType then return ns.SayTo(ns.Default(), chatType, rest) end
-    ns.Say(ns.Default(), text, channel, channel == "WHISPER" and whisperTo or nil)
+    if chatType then return ns.SayTo(ns.Default(), chatType, chatType == "WHISPER" and rest or Tidy(rest, chatType)) end
+    ns.Say(ns.Default(), Tidy(text, channel), channel, channel == "WHISPER" and whisperTo or nil)
 end
 
 -- Enter: the line, or (on an empty line) the next piece waiting. The box stays open while pieces wait.
@@ -424,6 +430,7 @@ local function MakeBox()
 
     local e = CreateFrame("EditBox", "EzTonguesBoxEdit", f)
     edit = e
+    e.ezCaretPolish = true -- tells EzCaret this box sends through Tidy
     e:SetFontObject(ChatFontNormal)
     e:SetPoint("TOPLEFT", b, "TOPRIGHT", 8, 0)
     e:SetPoint("BOTTOMRIGHT", -10, 6)
