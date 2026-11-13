@@ -434,7 +434,11 @@ local function MakeBox()
     e:SetScript("OnTextChanged", function(self, userInput)
         if userInput then SwitchFromText(self) end
     end)
-    e:SetScript("OnTabPressed", NextName)
+    -- Tab fixes the line's typos while EzCaret's hint shows them, else whispers the next name.
+    e:SetScript("OnTabPressed", function(self)
+        if EzCaretAPI and EzCaretAPI.Tab(self) then return end
+        NextName()
+    end)
     e:SetScript("OnArrowPressed", function(self, key)
         if #history == 0 or (key ~= "UP" and key ~= "DOWN") then return end
         historyAt = math.max(1, math.min(#history + 1, historyAt + (key == "UP" and -1 or 1)))

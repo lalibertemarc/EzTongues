@@ -17,6 +17,7 @@ globals = {
 }
 
 read_globals = {
+    "EzCaretAPI", -- optional: Tab fixes typos
     -- Frames & UI
     "CreateFrame", "UIParent", "DEFAULT_CHAT_FRAME", "ChatFontNormal", "GameTooltip",
     -- Settings panel
