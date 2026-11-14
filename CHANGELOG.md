@@ -1,8 +1,9 @@
 # EzTongues
 
-## Unreleased
+## v1.1.0
 
 - With EzCaret installed, the box tidies your line as you send it: common typos fixed, a capital at the start of sentences and a period at the end, before it is put into the language.
+- Listed under **Roleplay** in the game's AddOns list, next to other roleplay addons.
 
 ## v1.0.2
 
