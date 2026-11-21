@@ -87,6 +87,7 @@ EzTongues is one of a set of roleplay addons that work hand in hand:
 - **EzOOC**: out-of-character lines in `(( ))`, with the same kind of box.
 - **EzAcquaintances**: a contact book of the people you've met. Right-click its Whisper button and pick "In a tongue" to open the EzTongues box already on a whisper to them.
 - **EzEmote**: an emote palette and wheels for everything your character does while they talk.
+- **EzLines**: your own prewritten lines, one search away. A line can be said in any tongue your character speaks.
 
 Every one of them is free and stands on its own.
 
